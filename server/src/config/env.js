@@ -1,7 +1,15 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Look for .env in server root (two levels up from config), fallback to CWD
+const serverEnvPath = path.resolve(__dirname, '../../.env');
+dotenv.config({ path: serverEnvPath });
+dotenv.config(); // fallback to CWD if any
 
 const envSchema = z.object({
   PORT: z.coerce.number().default(5000),

@@ -100,16 +100,27 @@ export class TestSpecService {
     }
   }
 
-  static async synthesizeMatrix(prNumber, commitSha) {
-    const existing = await TestMatrix.findOne({ prNumber: Number(prNumber) });
+  static async synthesizeMatrix(prNumber, commitSha, repository) {
+    let existing = null;
+    if (repository && prNumber) {
+      existing = await TestMatrix.findOne({ repository, prNumber: Number(prNumber) });
+    }
+    if (!existing && repository) {
+      existing = await TestMatrix.findOne({ repository });
+    }
+    if (!existing && prNumber) {
+      existing = await TestMatrix.findOne({ prNumber: Number(prNumber) });
+    }
+
     if (existing) {
       return {
         matrix: JSON.parse(existing.rawJsonMatrix),
         testCases: existing.testCases,
         rawJsonMatrix: existing.rawJsonMatrix,
-        templates: existing.compiledTemplates
+        templates: existing.compiledTemplates,
       };
     }
+
 
     const testCases = this.generateBvaTestCases('/api/orders/checkout', 'POST');
     const rawMatrix = {

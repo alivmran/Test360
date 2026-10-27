@@ -65,6 +65,12 @@ export const apiClient = {
     return res.json();
   },
 
+  async verifyRepository(input) {
+    const res = await fetch(`${BASE_URL}/repositories/verify?input=${encodeURIComponent(input)}`);
+    if (!res.ok) throw new Error(`Repository verification failed`);
+    return res.json();
+  },
+
   async createRepository(repoData) {
     const res = await fetch(`${BASE_URL}/repositories`, {
       method: 'POST',
@@ -87,6 +93,26 @@ export const apiClient = {
     return data;
   },
 
+  async scanRepository(owner, repo) {
+    const res = await fetch(`${BASE_URL}/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/scan`, {
+      method: 'POST',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to scan repository');
+    return data;
+  },
+
+  async simulatePrWebhook(payload) {
+    const res = await fetch(`${BASE_URL}/repositories/simulate-pr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to simulate PR webhook');
+    return data;
+  },
+
   async deleteRepository(owner, repo) {
     const res = await fetch(`${BASE_URL}/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, {
       method: 'DELETE',
@@ -97,30 +123,41 @@ export const apiClient = {
   },
 
   // ==================== PR SCORECARD & RUNS ====================
-  async getPullRequestRun(repo, prNumber = 48) {
-    const encodedRepo = encodeURIComponent(repo);
-    const res = await fetch(`${BASE_URL}/pull-requests/${encodedRepo}/${prNumber}`);
-    if (!res.ok) throw new Error(`Failed to fetch PR #${prNumber}: ${res.statusText}`);
+  async getPullRequestRun(repo, prNumber = null) {
+    const query = new URLSearchParams();
+    if (repo) query.set('repository', repo);
+    if (prNumber) query.set('prNumber', prNumber);
+
+    const res = await fetch(`${BASE_URL}/pull-requests/latest?${query.toString()}`);
+    if (!res.ok) throw new Error(`Failed to fetch PR run for ${repo}: ${res.statusText}`);
     return res.json();
   },
 
-  async getHistoricalRuns() {
-    const res = await fetch(`${BASE_URL}/pull-requests/history`);
+  async getHistoricalRuns(repo) {
+    const query = repo ? `?repository=${encodeURIComponent(repo)}` : '';
+    const res = await fetch(`${BASE_URL}/pull-requests/history${query}`);
     if (!res.ok) throw new Error(`Failed to fetch historical runs: ${res.statusText}`);
     return res.json();
   },
 
   // ==================== AST BLAST RADIUS GRAPH ====================
-  async getAstCallGraph(repo, commitSha = 'a4f91c28f93e921d') {
-    const encodedRepo = encodeURIComponent(repo);
-    const res = await fetch(`${BASE_URL}/ast/${encodedRepo}/${commitSha}`);
+  async getAstCallGraph(repo, commitSha = null) {
+    const query = new URLSearchParams();
+    if (repo) query.set('repository', repo);
+    if (commitSha) query.set('commitSha', commitSha);
+
+    const res = await fetch(`${BASE_URL}/ast/graph?${query.toString()}`);
     if (!res.ok) throw new Error(`Failed to fetch AST graph: ${res.statusText}`);
     return res.json();
   },
 
   // ==================== TEST SYNTHESIS MATRIX ====================
-  async getTestSpecMatrix(prNumber = 48, commitSha = 'a4f91c28f93e921d') {
-    const res = await fetch(`${BASE_URL}/test-specs/${prNumber}/${commitSha}`);
+  async getTestSpecMatrix(repo, prNumber = null) {
+    const query = new URLSearchParams();
+    if (repo) query.set('repository', repo);
+    if (prNumber) query.set('prNumber', prNumber);
+
+    const res = await fetch(`${BASE_URL}/test-specs?${query.toString()}`);
     if (!res.ok) throw new Error(`Failed to fetch test spec matrix: ${res.statusText}`);
     return res.json();
   },
@@ -133,6 +170,7 @@ export const apiClient = {
     });
     return res.json();
   },
+
 
   // ==================== SANDBOX TELEMETRY ====================
   async getSandboxTelemetry(repo, prNumber = 48) {

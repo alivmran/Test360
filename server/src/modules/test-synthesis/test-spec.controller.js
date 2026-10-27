@@ -3,9 +3,17 @@ import { TemplateCompilerService } from './template-compiler.service.js';
 
 export class TestSpecController {
   static async getSpecMatrix(req, res) {
-    const prNumber = parseInt(req.params.prNumber, 10) || 48;
-    const commitSha = req.params.commitSha || 'a4f91c28f93e921d';
-    const result = await TestSpecService.synthesizeMatrix(prNumber, commitSha);
+    const prNumber = req.params.prNumber
+      ? parseInt(req.params.prNumber, 10)
+      : req.query.prNumber
+      ? parseInt(req.query.prNumber, 10)
+      : null;
+    const commitSha = req.params.commitSha || req.query.commitSha || 'a4f91c28f93e921d';
+    let repository = req.query.repository;
+    if (!repository && req.params.owner && req.params.repo) {
+      repository = `${req.params.owner}/${req.params.repo}`;
+    }
+    const result = await TestSpecService.synthesizeMatrix(prNumber, commitSha, repository);
     const templates = result.templates || TemplateCompilerService.compileTemplates(result.matrix);
 
     res.json({
@@ -15,6 +23,7 @@ export class TestSpecController {
       templates,
     });
   }
+
 
   static async validateJson(req, res) {
     const { jsonString } = req.body;

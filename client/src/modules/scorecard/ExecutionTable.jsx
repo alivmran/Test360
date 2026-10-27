@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { 
   CheckCircle2, 
-  XCircle, 
+  AlertCircle, 
   ChevronRight, 
-  ChevronDown 
+  ChevronDown,
+  Wrench,
+  Sparkles
 } from 'lucide-react';
 
 export const ExecutionTable = ({ scorecard, onNavigateToStage }) => {
@@ -18,175 +20,195 @@ export const ExecutionTable = ({ scorecard, onNavigateToStage }) => {
   const { unit, api, uiSmoke, load } = scorecard.tiers;
 
   return (
-    <div className="bg-zinc-925 border border-zinc-800 rounded">
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-        <h2 className="text-xs font-mono font-semibold tracking-wide text-zinc-200 uppercase">
-          4-Tier Closed-Loop Execution Summary
-        </h2>
-        <span className="text-[11px] font-mono text-zinc-500">
-          Deterministic Sandboxed Pipeline
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-100">
+            How Your Tests Performed
+          </h2>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Automatic tests generated for this Pull Request across all application layers
+          </p>
+        </div>
+        <span className="text-xs font-mono px-2 py-0.5 bg-zinc-800 text-zinc-300 rounded">
+          4 Test Levels
         </span>
       </div>
 
-      <div className="divide-y divide-zinc-800">
-        {/* Tier 1: Unit */}
-        <div className="p-4 transition-colors hover:bg-zinc-900/30">
+      <div className="divide-y divide-zinc-800/80 text-xs">
+        {/* Level 1: Unit Tests */}
+        <div className="p-4 transition-colors hover:bg-zinc-800/20">
           <div 
             onClick={() => toggleTier('unit')}
             className="flex items-center justify-between cursor-pointer"
           >
             <div className="flex items-center space-x-3">
-              <CheckCircle2 size={16} strokeWidth={1.5} className="text-semantic-emerald shrink-0" />
+              <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono font-bold text-zinc-200">Tier 1: Unit (Jest)</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">
+                  <span className="font-semibold text-zinc-200">Level 1: Unit Tests (Functions &amp; Logic)</span>
+                  <span className="text-[11px] px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded-full font-medium">
                     {unit?.passed || 16}/{unit?.total || 16} Passed
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">{unit?.details || 'Pure functions, coupon discount calculator, cart weight aggregator, middleware token formatters.'}</p>
+                <p className="text-zinc-400 mt-0.5">
+                  Verified pure functions, discount calculations, and input formatting rules.
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-xs font-mono text-zinc-500">{unit?.duration || '4.2s'}</span>
-              {expandedTier === 'unit' ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />}
+            <div className="flex items-center space-x-3 text-zinc-500">
+              <span className="font-mono text-xs">{unit?.duration || '4.2s'}</span>
+              {expandedTier === 'unit' ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
             </div>
           </div>
 
           {expandedTier === 'unit' && (
-            <div className="mt-3 pl-7 pt-2 border-t border-zinc-800/80 font-mono text-xs text-zinc-400 space-y-1">
-              <div className="text-semantic-emerald">✓ calculateDiscount() with coupon rate logic (3 tests passed)</div>
-              <div className="text-semantic-emerald">✓ aggregateCartWeight() multi-item bounds (4 tests passed)</div>
-              <div className="text-semantic-emerald">✓ validateOrderPayload schema boundary tests (9 tests passed)</div>
+            <div className="mt-3 pl-8 pt-2.5 border-t border-zinc-800 text-zinc-400 space-y-1.5">
+              <div className="text-emerald-400">✓ Discount coupon calculation works as expected</div>
+              <div className="text-emerald-400">✓ Shopping cart total and weight calculations verified</div>
+              <div className="text-emerald-400">✓ Order schema field validation passed</div>
             </div>
           )}
         </div>
 
-        {/* Tier 2: API Integration */}
-        <div className={`p-4 ${api?.status === 'failed' ? 'bg-semantic-rose/5 border-l-2 border-l-semantic-rose' : 'transition-colors hover:bg-zinc-900/30'}`}>
+        {/* Level 2: API Tests */}
+        <div className={`p-4 ${api?.status === 'failed' ? 'bg-rose-950/10 border-l-4 border-l-rose-500' : 'transition-colors hover:bg-zinc-800/20'}`}>
           <div 
             onClick={() => toggleTier('api')}
             className="flex items-center justify-between cursor-pointer"
           >
             <div className="flex items-center space-x-3">
               {api?.status === 'failed' ? (
-                <XCircle size={16} strokeWidth={1.5} className="text-semantic-rose shrink-0" />
+                <AlertCircle size={18} className="text-rose-400 shrink-0" />
               ) : (
-                <CheckCircle2 size={16} strokeWidth={1.5} className="text-semantic-emerald shrink-0" />
+                <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
               )}
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono font-bold text-zinc-200">
-                    Tier 2: API (Supertest + In-Memory MongoDB)
+                  <span className="font-semibold text-zinc-200">
+                    Level 2: API Tests (Routes &amp; Database)
                   </span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-medium ${
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
                     api?.status === 'failed'
-                      ? 'bg-semantic-rose/20 border border-semantic-rose/30 text-semantic-rose'
-                      : 'bg-zinc-800 border border-zinc-700 text-zinc-300'
+                      ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                      : 'bg-emerald-500/10 text-emerald-300'
                   }`}>
-                    {api?.passed}/{api?.total} Passed {api?.status === 'failed' ? '(1 Failed)' : ''}
+                    {api?.passed}/{api?.total} Passed {api?.status === 'failed' ? '(1 Bug Found)' : ''}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">{api?.details}</p>
+                <p className="text-zinc-400 mt-0.5">
+                  Simulated real HTTP requests against your Express routes with an isolated test database.
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-xs font-mono text-zinc-500">{api?.duration}</span>
-              {expandedTier === 'api' ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />}
+            <div className="flex items-center space-x-3 text-zinc-500">
+              <span className="font-mono text-xs">{api?.duration}</span>
+              {expandedTier === 'api' ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
             </div>
           </div>
 
+          {/* Friendly Bug Card */}
           {expandedTier === 'api' && api?.status === 'failed' && (
-            <div className="mt-3 pl-7 pt-2 border-t border-zinc-800/80 space-y-2 font-mono text-xs">
-              <div className="p-2.5 bg-zinc-950 border border-zinc-800 rounded text-zinc-300">
-                <div className="flex items-center justify-between text-semantic-rose mb-1 font-semibold">
-                  <span>FAIL: TC-02 Boundary min-1 (item.quantity = -1)</span>
-                  <span className="text-[10px] text-zinc-500">POST /api/orders/checkout</span>
+            <div className="mt-3.5 pl-8 pt-3 border-t border-zinc-800 space-y-3">
+              <div className="p-3.5 bg-zinc-950/80 border border-rose-900/40 rounded-xl space-y-2">
+                <div className="flex items-center space-x-2 text-rose-300 font-semibold text-xs">
+                  <AlertCircle size={15} className="text-rose-400" />
+                  <span>Bug Found in: <code>POST /api/orders/checkout</code></span>
                 </div>
-                <p className="text-zinc-400 text-[11px] leading-relaxed">
-                  Expected HTTP <span className="text-semantic-emerald font-semibold">400 Bad Request</span>, received <span className="text-semantic-rose font-semibold">500 Internal Server Error</span>.
+                
+                <p className="text-zinc-300 text-xs leading-relaxed">
+                  <strong>What happened:</strong> A test simulated an order with a negative quantity (<code className="text-rose-300">quantity: -1</code>). The server crashed with an unhandled <code className="text-rose-300">500 Server Error</code> instead of rejecting it with a clean <code className="text-emerald-300">400 Bad Request</code> response.
                 </p>
-                <div className="mt-2 text-[10px] text-zinc-500 bg-zinc-900 p-2 rounded border border-zinc-800">
-                  <code>Location: src/controllers/checkoutController.ts:64:13</code>
-                  <br />
-                  <code>Product.stockCount -= item.quantity // Cast to Number failed for value &quot;NaN&quot;</code>
+
+                <div className="p-2.5 bg-zinc-900 rounded-lg text-xs text-zinc-400 font-mono flex items-center justify-between">
+                  <span>File: <strong className="text-zinc-200">checkoutController.ts</strong> (Line 64)</span>
+                  <span className="text-[11px] text-zinc-500">Missing quantity &gt; 0 check</span>
                 </div>
-              </div>
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-zinc-400">9 other integration endpoints passed cleanly.</span>
-                <button 
-                  onClick={() => onNavigateToStage('diagnostics-fix')}
-                  className="text-[11px] text-semantic-rose hover:underline flex items-center space-x-1"
-                >
-                  <span>Inspect Stderr &amp; One-Click Fix &rarr;</span>
-                </button>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-emerald-400 flex items-center space-x-1">
+                    <Sparkles size={12} />
+                    <span>Auto-repair available in Monaco editor</span>
+                  </span>
+                  <button 
+                    onClick={() => onNavigateToStage('test-spec')}
+                    className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs rounded transition-colors flex items-center space-x-1"
+                  >
+                    <Wrench size={12} />
+                    <span>View Test Details</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Tier 3: UI Smoke */}
-        <div className="p-4 transition-colors hover:bg-zinc-900/30">
+        {/* Level 3: Browser Smoke Tests */}
+        <div className="p-4 transition-colors hover:bg-zinc-800/20">
           <div 
             onClick={() => toggleTier('smoke')}
             className="flex items-center justify-between cursor-pointer"
           >
             <div className="flex items-center space-x-3">
-              <CheckCircle2 size={16} strokeWidth={1.5} className="text-semantic-emerald shrink-0" />
+              <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono font-bold text-zinc-200">Tier 3: UI Smoke (Playwright)</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">
+                  <span className="font-semibold text-zinc-200">Level 3: Web UI Smoke Tests (Browser)</span>
+                  <span className="text-[11px] px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded-full font-medium">
                     {uiSmoke?.passed || 4}/{uiSmoke?.total || 4} Passed
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">{uiSmoke?.details}</p>
+                <p className="text-zinc-400 mt-0.5">
+                  Automated headless browser verified that the user checkout flow loads and clicks without errors.
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-xs font-mono text-zinc-500">{uiSmoke?.duration}</span>
-              {expandedTier === 'smoke' ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />}
+            <div className="flex items-center space-x-3 text-zinc-500">
+              <span className="font-mono text-xs">{uiSmoke?.duration}</span>
+              {expandedTier === 'smoke' ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
             </div>
           </div>
 
           {expandedTier === 'smoke' && (
-            <div className="mt-3 pl-7 pt-2 border-t border-zinc-800/80 font-mono text-xs text-zinc-400 space-y-1">
-              <div className="text-semantic-emerald">✓ Cart item count verification</div>
-              <div className="text-semantic-emerald">✓ Proceed to checkout stepper transition</div>
-              <div className="text-semantic-emerald">✓ Stock badge real-time reactive render</div>
-              <div className="text-semantic-emerald">✓ Idempotency client header injection</div>
+            <div className="mt-3 pl-8 pt-2.5 border-t border-zinc-800 text-zinc-400 space-y-1.5">
+              <div className="text-emerald-400">✓ Adding products to cart works</div>
+              <div className="text-emerald-400">✓ Proceeding to checkout stepper transitions smoothly</div>
+              <div className="text-emerald-400">✓ Order confirmation button is clickable</div>
             </div>
           )}
         </div>
 
-        {/* Tier 4: Concurrency/Load */}
-        <div className="p-4 transition-colors hover:bg-zinc-900/30">
+        {/* Level 4: Speed and Concurrency */}
+        <div className="p-4 transition-colors hover:bg-zinc-800/20">
           <div 
             onClick={() => toggleTier('load')}
             className="flex items-center justify-between cursor-pointer"
           >
             <div className="flex items-center space-x-3">
-              <CheckCircle2 size={16} strokeWidth={1.5} className="text-semantic-emerald shrink-0" />
+              <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs font-mono font-bold text-zinc-200">Tier 4: Concurrency (Autocannon)</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">
-                    Passed ({load?.connections || 100} Concurrency)
+                  <span className="font-semibold text-zinc-200">Level 4: Speed &amp; Stress Test (Load)</span>
+                  <span className="text-[11px] px-2 py-0.5 bg-emerald-500/10 text-emerald-300 rounded-full font-medium">
+                    Passed (100 Concurrent Users)
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">{load?.details}</p>
+                <p className="text-zinc-400 mt-0.5">
+                  Sent 18,400+ requests over 10 seconds to ensure the server doesn't freeze or slow down under load.
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <span className="text-xs font-mono text-zinc-500">{load?.duration}</span>
-              {expandedTier === 'load' ? <ChevronDown size={14} className="text-zinc-500" /> : <ChevronRight size={14} className="text-zinc-500" />}
+            <div className="flex items-center space-x-3 text-zinc-500">
+              <span className="font-mono text-xs">{load?.duration}</span>
+              {expandedTier === 'load' ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
             </div>
           </div>
 
           {expandedTier === 'load' && (
-            <div className="mt-3 pl-7 pt-2 border-t border-zinc-800/80 font-mono text-xs text-zinc-400 space-y-1">
-              <div>18,420 total requests in 10.05 seconds | Zero 5xx responses</div>
-              <div className="text-zinc-300">Average Throughput: 1,842 req/sec | Event Loop Lag: 1.2ms</div>
+            <div className="mt-3 pl-8 pt-2.5 border-t border-zinc-800 text-zinc-400 space-y-1">
+              <div className="text-zinc-300">✓ 18,420 total requests completed in 10s without freezing</div>
+              <div className="text-emerald-400">✓ Zero 5xx server crash errors under 100 simultaneous users</div>
+              <div className="text-zinc-400">✓ Average response time: 38 milliseconds</div>
             </div>
           )}
         </div>

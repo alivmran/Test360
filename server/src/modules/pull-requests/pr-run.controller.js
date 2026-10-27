@@ -2,8 +2,18 @@ import { PullRequestService } from './pr-run.service.js';
 
 export class PullRequestController {
   static async getLatestRun(req, res) {
-    const repository = String(req.params.repository);
-    const prNumber = req.params.prNumber ? Number(req.params.prNumber) : null;
+    let repository = req.query.repository;
+    if (!repository && req.params.owner && req.params.repo) {
+      repository = `${req.params.owner}/${req.params.repo}`;
+    } else if (!repository && req.params.repository) {
+      repository = decodeURIComponent(req.params.repository);
+    }
+    const prNumber = req.params.prNumber
+      ? Number(req.params.prNumber)
+      : req.query.prNumber
+      ? Number(req.query.prNumber)
+      : null;
+
     const run = await PullRequestService.getLatestRun(repository, prNumber);
     res.json({ run });
   }
@@ -13,6 +23,7 @@ export class PullRequestController {
     const runs = await PullRequestService.listHistoricalRuns(repository);
     res.json({ historicalRuns: runs });
   }
+
 
   static async rerun(req, res) {
     const { repository, prNumber, commitSha, branch, author } = req.body;

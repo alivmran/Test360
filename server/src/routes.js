@@ -15,6 +15,7 @@ const router = Router();
 // Modular domain routes
 router.use('/auth', authRoutes);
 router.use('/ingestion', ingestionRoutes);
+router.use('/webhooks/github', ingestionRoutes);
 router.use('/repositories', repositoryRoutes);
 router.use('/pull-requests', pullRequestRoutes);
 router.use('/ast', astRoutes);
@@ -22,6 +23,7 @@ router.use('/test-specs', testSpecRoutes);
 router.use('/sandbox', sandboxRoutes);
 router.use('/mutations', mutationRoutes);
 router.use('/diagnostics', diagnosticsRoutes);
+
 
 // Global telemetry & health endpoint
 router.get('/health', (_req, res) => {

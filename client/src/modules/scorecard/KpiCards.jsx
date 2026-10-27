@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Zap, Activity } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, FileCode2, Zap, Gauge, ArrowRight } from 'lucide-react';
 
 export const KpiCards = ({ scorecard, onNavigateToStage }) => {
   if (!scorecard) return null;
@@ -13,78 +13,85 @@ export const KpiCards = ({ scorecard, onNavigateToStage }) => {
 
   const mutationScore = scorecard.mutationKillScore?.score ?? scorecard.mutationScore?.score ?? 85.0;
   const killedCount = scorecard.mutationKillScore?.killed ?? scorecard.mutationScore?.killed ?? 17;
-  const survivedCount = scorecard.mutationKillScore?.survived ?? scorecard.mutationScore?.survived ?? 3;
+  const totalMutants = scorecard.mutationKillScore?.sampled ?? scorecard.mutationScore?.sampled ?? 20;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* KPI 1: 4-Tier Suite Verdict */}
-      <div className="bg-zinc-925 border border-zinc-800 rounded p-4">
-        <div className="flex items-center justify-between text-xs text-zinc-400 font-mono mb-2">
-          <span>4-Tier Suite Verdict</span>
-          <Layers size={14} strokeWidth={1.5} className="text-zinc-500" />
+      {/* Card 1: Test Status */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between">
+        <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+          <span className="font-medium">Test Results</span>
+          {failedTiers > 0 ? (
+            <AlertTriangle size={15} className="text-amber-400" />
+          ) : (
+            <CheckCircle2 size={15} className="text-emerald-400" />
+          )}
         </div>
-        <div className="text-lg font-bold font-mono text-zinc-50 tracking-tight">
-          {passedTiers} Passed / <span className={failedTiers > 0 ? "text-semantic-rose" : "text-semantic-emerald"}>{failedTiers} Failed</span>
-        </div>
-        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 mt-2 pt-2 border-t border-zinc-800/80">
-          <span>Pipeline Duration</span>
-          <span className="text-zinc-300 font-medium">{scorecard.totalPipelineDuration || `${((scorecard.totalDurationMs || 52400) / 1000).toFixed(1)}s`}</span>
+        <div>
+          <div className="text-xl font-bold text-zinc-100">
+            {passedTiers} Passed{' '}
+            <span className={failedTiers > 0 ? 'text-rose-400 text-sm font-semibold' : 'text-emerald-400 text-sm font-semibold'}>
+              · {failedTiers > 0 ? `${failedTiers} Issue Found` : 'All Clear'}
+            </span>
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">
+            Ran in {scorecard.totalPipelineDuration || '52.4s'}
+          </p>
         </div>
       </div>
 
-      {/* KPI 2: PR Blast Radius */}
+      {/* Card 2: Code Affected */}
       <div 
         onClick={() => onNavigateToStage('ast-graph')}
-        className="bg-zinc-925 hover:bg-zinc-900/60 border border-zinc-800 rounded p-4 cursor-pointer transition-colors"
+        className="bg-zinc-900/60 hover:bg-zinc-800/60 border border-zinc-800 rounded-xl p-4 cursor-pointer transition-all flex flex-col justify-between group"
       >
-        <div className="flex items-center justify-between text-xs text-zinc-400 font-mono mb-2">
-          <span>PR Blast Radius</span>
-          <span className="text-[10px] text-semantic-amber font-mono">[Stage 2]</span>
+        <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+          <span className="font-medium">Code Affected</span>
+          <FileCode2 size={15} className="text-indigo-400 group-hover:translate-x-0.5 transition-transform" />
         </div>
-        <div className="text-lg font-bold font-mono text-zinc-50 tracking-tight">
-          {scorecard.blastRadius?.routesImpacted ?? 4} Routes Impacted
-        </div>
-        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 mt-2 pt-2 border-t border-zinc-800/80">
-          <span>Traversed AST Files</span>
-          <span className="text-zinc-300 font-medium">{scorecard.blastRadius?.filesTraversed ?? 14} Files</span>
+        <div>
+          <div className="text-xl font-bold text-zinc-100">
+            {scorecard.blastRadius?.routesImpacted ?? 4} API Routes
+          </div>
+          <p className="text-xs text-zinc-400 mt-1 flex items-center justify-between">
+            <span>{scorecard.blastRadius?.filesTraversed ?? 14} files checked</span>
+            <span className="text-[11px] text-indigo-400 font-medium group-hover:underline">View Map &rarr;</span>
+          </p>
         </div>
       </div>
 
-      {/* KPI 3: Mutation Kill Score */}
+      {/* Card 3: Bug Catching Quality */}
       <div 
-        onClick={() => onNavigateToStage('mutation-load')}
-        className="bg-zinc-925 hover:bg-zinc-900/60 border border-zinc-800 rounded p-4 cursor-pointer transition-colors"
+        onClick={() => onNavigateToStage('test-spec')}
+        className="bg-zinc-900/60 hover:bg-zinc-800/60 border border-zinc-800 rounded-xl p-4 cursor-pointer transition-all flex flex-col justify-between group"
       >
-        <div className="flex items-center justify-between text-xs text-zinc-400 font-mono mb-2">
-          <span>Mutation Kill Score</span>
-          <Zap size={14} strokeWidth={1.5} className="text-semantic-emerald" />
+        <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+          <span className="font-medium">Bug-Catching Score</span>
+          <Zap size={15} className="text-emerald-400" />
         </div>
-        <div className="text-lg font-bold font-mono text-semantic-emerald tracking-tight">
-          {mutationScore.toFixed(1)}%
-        </div>
-        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 mt-2 pt-2 border-t border-zinc-800/80">
-          <span>Mutants Tested</span>
-          <span className="text-zinc-300 font-medium">
-            {killedCount} Killed / {survivedCount} Survived
-          </span>
+        <div>
+          <div className="text-xl font-bold text-emerald-400">
+            {mutationScore.toFixed(0)}% Reliable
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">
+            Caught {killedCount} of {totalMutants} simulated bugs
+          </p>
         </div>
       </div>
 
-      {/* KPI 4: Load Concurrency */}
-      <div 
-        onClick={() => onNavigateToStage('mutation-load')}
-        className="bg-zinc-925 hover:bg-zinc-900/60 border border-zinc-800 rounded p-4 cursor-pointer transition-colors"
-      >
-        <div className="flex items-center justify-between text-xs text-zinc-400 font-mono mb-2">
-          <span>Autocannon Concurrency</span>
-          <Activity size={14} strokeWidth={1.5} className="text-zinc-500" />
+      {/* Card 4: API Response Speed */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between">
+        <div className="flex items-center justify-between text-xs text-zinc-400 mb-2">
+          <span className="font-medium">API Response Speed</span>
+          <Gauge size={15} className="text-sky-400" />
         </div>
-        <div className="text-lg font-bold font-mono text-zinc-50 tracking-tight">
-          p90: {scorecard.latency?.p90 ?? 38}ms
-        </div>
-        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-500 mt-2 pt-2 border-t border-zinc-800/80">
-          <span>p95 / p99 Latency</span>
-          <span className="text-zinc-300 font-medium">{scorecard.latency?.p95 ?? 61}ms / {scorecard.latency?.p99 ?? 112}ms</span>
+        <div>
+          <div className="text-xl font-bold text-zinc-100">
+            {scorecard.latency?.p90 ?? 38}ms
+          </div>
+          <p className="text-xs text-zinc-400 mt-1">
+            Fast response under 100 users load
+          </p>
         </div>
       </div>
     </div>

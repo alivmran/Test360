@@ -59,26 +59,26 @@ export const App = () => {
         }
       }
 
-      // Fetch Active PR Run
-      const prRes = await apiClient.getPullRequestRun(selectedRepo, 48).catch(() => null);
+      // Fetch Active PR Run for selected repository
+      const prRes = await apiClient.getPullRequestRun(selectedRepo).catch(() => null);
       if (prRes?.run) {
         setPrScorecard(prRes.run);
       }
 
-      // Fetch Historical PR Runs
-      const histRes = await apiClient.getHistoricalRuns().catch(() => null);
+      // Fetch Historical PR Runs for selected repository
+      const histRes = await apiClient.getHistoricalRuns(selectedRepo).catch(() => null);
       if (histRes?.historicalRuns?.length) {
         setHistoricalRuns(histRes.historicalRuns);
       }
 
-      // Fetch AST Call Graph
+      // Fetch AST Call Graph for selected repository
       const astRes = await apiClient.getAstCallGraph(selectedRepo).catch(() => null);
       if (astRes?.nodes?.length) {
         setAstNodes(astRes.nodes);
       }
 
-      // Fetch Test Spec Matrix & Templates
-      const specRes = await apiClient.getTestSpecMatrix(48).catch(() => null);
+      // Fetch Test Spec Matrix & Templates for selected repository
+      const specRes = await apiClient.getTestSpecMatrix(selectedRepo).catch(() => null);
       if (specRes?.testCases?.length) {
         setTestCases(specRes.testCases);
       }
@@ -107,6 +107,7 @@ export const App = () => {
     if (res?.repository) {
       setRepositories((prev) => [res.repository, ...prev]);
       setSelectedRepo(res.repository.fullName);
+      await loadData();
     }
     return res;
   };
@@ -118,6 +119,18 @@ export const App = () => {
         prev.map((r) => (r.fullName === res.repository.fullName ? res.repository : r))
       );
     }
+    return res;
+  };
+
+  const handleScanRepo = async (owner, repo) => {
+    const res = await apiClient.scanRepository(owner, repo);
+    await loadData();
+    return res;
+  };
+
+  const handleSimulatePr = async (payload) => {
+    const res = await apiClient.simulatePrWebhook(payload);
+    await loadData();
     return res;
   };
 
@@ -135,7 +148,10 @@ export const App = () => {
   const handleRerunPipeline = async () => {
     setIsRerunning(true);
     try {
-      await apiClient.rerunPipeline({ repository: selectedRepo, prNumber: 48 });
+      await apiClient.rerunPipeline({
+        repository: selectedRepo,
+        prNumber: prScorecard?.prNumber || 1,
+      });
       await loadData();
     } catch (err) {
       console.error('Error re-running pipeline:', err);
@@ -191,8 +207,12 @@ export const App = () => {
             onCreateRepo={handleCreateRepo}
             onUpdateConfig={handleUpdateConfig}
             onDeleteRepo={handleDeleteRepo}
+            onScanRepo={handleScanRepo}
+            onSimulatePr={handleSimulatePr}
+            onNavigateTab={setCurrentTab}
           />
         )}
+
 
         {currentTab === 'profile' && (
           <ProfileAuthView
