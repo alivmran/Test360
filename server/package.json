@@ -1,0 +1,26 @@
+{
+  "name": "test360-ai-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test360 AI Backend Service - Modular AST Program Analysis, Test Synthesis, and Closed-Loop Docker Runner",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.26.2",
+    "@babel/traverse": "^7.25.9",
+    "@babel/types": "^7.26.0",
+    "@octokit/rest": "^21.0.2",
+    "bullmq": "^5.25.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "ioredis": "^5.4.1",
+    "mongoose": "^8.8.0",
+    "zod": "^3.23.8"
+  }
+}

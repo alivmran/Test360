@@ -1,0 +1,27 @@
+{
+  "name": "test360-ai-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Test360 AI: Autonomous Multi-Tier Test Synthesis, Closed-Loop Execution, and Self-Healing Diagnostics Platform",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm --workspace=client run dev",
+    "dev:client": "npm --workspace=client run dev",
+    "dev:server": "npm --workspace=server run dev",
+    "build:client": "npm --workspace=client run build",
+    "build:server": "npm --workspace=server run build",
+    "build": "npm --workspace=client run build && npm --workspace=server run build"
+  },
+  "keywords": [
+    "ast-analysis",
+    "test-synthesis",
+    "self-healing",
+    "mutation-testing",
+    "developer-tooling"
+  ],
+  "author": "Test360 AI Team",
+  "license": "MIT"
+}

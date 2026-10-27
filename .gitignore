@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+dist/
+
+# Environment Configuration
+.env
+.env.local
+.env.*.local
+
+# Content / Proposal and SRS documents
+Content/
+content/
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
