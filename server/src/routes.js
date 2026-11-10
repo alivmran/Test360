@@ -9,6 +9,7 @@ import { mutationRoutes } from './modules/mutation-testing/mutation.routes.js';
 import { diagnosticsRoutes } from './modules/diagnostics-repair/diagnostics.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { env } from './config/env.js';
+import { getDatabaseStatus } from './config/database.js';
 
 const router = Router();
 
@@ -27,8 +28,10 @@ router.use('/diagnostics', diagnosticsRoutes);
 
 // Global telemetry & health endpoint
 router.get('/health', (_req, res) => {
+  const db = getDatabaseStatus();
   res.json({
-    status: 'healthy',
+    status: db.status === 'connected' ? 'healthy' : 'degraded',
+    database: db,
     timestamp: new Date().toISOString(),
     engine: 'Test360 AI Autonomous Multi-Tier Test Synthesis Platform',
     stack: 'MERN (MongoDB, Express, React, Node.js)',

@@ -3,6 +3,8 @@ import { Repository } from './repository.model.js';
 import { AstCallGraph } from '../ast-analysis/ast.model.js';
 import { PullRequestRun } from '../pull-requests/pr-run.model.js';
 import { TestMatrix } from '../test-synthesis/test-spec.model.js';
+import { SandboxRun } from '../docker-sandbox/sandbox.model.js';
+import { MutationReport } from '../mutation-testing/mutation.model.js';
 import { IngestionService } from '../ingestion/ingestion.service.js';
 
 export class RepositoryService {
@@ -353,7 +355,12 @@ export class RepositoryService {
       throw new Error(`Repository "${fullName}" not found.`);
     }
 
-    const { routesDir, controllersDir, servicesDir, modelsDir } = repo.conventions;
+    const {
+      routesDir = 'src/routes',
+      controllersDir = 'src/controllers',
+      servicesDir = 'src/services',
+      modelsDir = 'src/models',
+    } = repo.conventions || {};
     const repoName = repo.repoName;
 
     // Dynamically synthesize AST nodes based on configured conventions
@@ -538,6 +545,15 @@ export class RepositoryService {
       throw new Error(`Repository "${fullName}" not found.`);
     }
 
+    if (!repo.conventions) {
+      repo.conventions = {
+        routesDir: 'src/routes',
+        controllersDir: 'src/controllers',
+        servicesDir: 'src/services',
+        modelsDir: 'src/models',
+      };
+    }
+
     if (data.conventions) {
       repo.conventions = {
         routesDir: data.conventions.routesDir ?? repo.conventions.routesDir,
@@ -562,10 +578,12 @@ export class RepositoryService {
     if (!result) {
       throw new Error(`Repository "${fullName}" not found for deletion.`);
     }
-    // Clean up associated PR runs and AST graphs
+    // Clean up associated PR runs, AST graphs, sandbox runs, and mutation reports
     await PullRequestRun.deleteMany({ repository: fullName }).catch(() => {});
     await AstCallGraph.deleteMany({ repository: fullName }).catch(() => {});
     await TestMatrix.deleteMany({ repository: fullName }).catch(() => {});
+    await SandboxRun.deleteMany({ repository: fullName }).catch(() => {});
+    await MutationReport.deleteMany({ repository: fullName }).catch(() => {});
 
     return { success: true, message: `Repository "${fullName}" disconnected successfully.` };
   }

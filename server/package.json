@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "seed": "node src/seed.js"
+    "seed": "node src/seed.js",
+    "test": "node test-crud-suite.js",
+    "test:crud": "node test-crud-suite.js"
   },
   "dependencies": {
     "@babel/parser": "^7.26.2",
