@@ -65,7 +65,6 @@ Test360-AI/
 │   │   ├── seed.js                      # Sample repository & telemetry seeder
 │   │   └── server.js                    # Application entry point
 │   ├── test-crud-suite.js               # End-to-end DB, Auth, and CRUD verification suite
-│   ├── .env.example
 │   └── package.json
 │
 ├── package.json                         # Monorepo root workspace scripts
@@ -86,81 +85,6 @@ Test360-AI/
 
 ---
 
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** `v20+`
-- **MongoDB** (local instance or MongoDB Atlas connection string)
-- **Redis** *(optional — BullMQ gracefully falls back to in-process execution when Redis is unavailable)*
-
-### 1. Install Dependencies
-
-```bash
-npm install
-```
-
-### 2. Configure Environment Variables
-
-Copy `server/.env.example` to `server/.env` and update the values for your environment:
-
-```bash
-cp server/.env.example server/.env
-```
-
-Key variables in `server/.env` (validated at startup via `server/src/config/env.js`):
-
-```env
-PORT=5000
-NODE_ENV=development
-
-# MongoDB Connection
-MONGO_URI=mongodb://127.0.0.1:27017/test360_ai
-
-# Redis Connection (BullMQ)
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-# GitHub Integration & Token Signing
-GITHUB_APP_ID=1029384
-GITHUB_WEBHOOK_SECRET=your_webhook_and_session_secret
-
-# Local SLM Service (Ollama)
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-SLM_MODEL_NAME=test360-coder:1.5b-qlora-4bit
-
-# Docker Sandbox Limits
-DOCKER_MEMORY_LIMIT=1.5g
-DOCKER_CPU_LIMIT=1.0
-DOCKER_USER=node
-SANDBOX_TIMEOUT_MS=120000
-```
-
-### 3. Seed Sample Telemetry *(Optional)*
-
-Populate MongoDB with sample repositories, PR runs, AST call graphs, and test matrices:
-
-```bash
-npm --workspace=server run seed
-```
-
-### 4. Run the Development Servers
-
-Start the backend and frontend in separate terminals:
-
-```bash
-# Terminal 1: Start Express API server (http://localhost:5000)
-npm run dev:server
-
-# Terminal 2: Start Vite React client (http://localhost:3000)
-npm run dev:client
-```
-
-Open **`http://localhost:3000`** in your browser. Create an account via **Get Started** or sign in with an existing account from your database.
-
----
-
 ## Testing & Verification
 
 Run the backend integration test suite to verify MongoDB connectivity, authentication, user CRUD, repository CRUD (including cascade cleanup), and test matrix validation:
@@ -174,34 +98,6 @@ Build the frontend production bundle:
 ```bash
 npm run build:client
 ```
-
----
-
-## REST API Reference
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Service health and live MongoDB connection status |
-| `POST` | `/api/auth/register` | Register a new user account |
-| `POST` | `/api/auth/login` | Authenticate credentials and issue a Bearer token |
-| `GET` | `/api/auth/me` | Resolve authenticated user from Bearer token |
-| `GET` | `/api/auth/profile/:id` | Fetch user profile by ID |
-| `PUT` | `/api/auth/profile/:id` | Update user profile details and role |
-| `DELETE` | `/api/auth/profile/:id` | Delete user account |
-| `GET` | `/api/repositories` | List connected repositories |
-| `GET` | `/api/repositories/verify` | Verify GitHub repository metadata |
-| `POST` | `/api/repositories` | Attach a repository and generate initial baseline telemetry |
-| `GET` | `/api/repositories/:owner/:repo` | Fetch single repository details |
-| `POST` | `/api/repositories/:owner/:repo/scan` | Scan repository conventions and update AST graph |
-| `PUT` | `/api/repositories/:owner/:repo/config` | Update repository branch and directory conventions |
-| `POST` | `/api/repositories/simulate-pr` | Simulate a GitHub pull request webhook event |
-| `DELETE` | `/api/repositories/:owner/:repo` | Remove repository and cascade-delete associated telemetry |
-| `GET` | `/api/pull-requests/latest` | Retrieve scorecard for the latest or specified PR number |
-| `GET` | `/api/pull-requests/history` | Retrieve historical PR metrics for a repository |
-| `POST` | `/api/pull-requests/rerun` | Trigger a pipeline rerun |
-| `GET` | `/api/ast/graph` | Fetch AST dependency nodes and edges |
-| `GET` | `/api/test-specs` | Retrieve synthesized test matrix and compiled suites |
-| `POST` | `/api/test-specs/validate` | Validate a JSON test matrix against Zod schemas |
 
 ---
 
