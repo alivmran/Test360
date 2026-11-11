@@ -1,209 +1,219 @@
 # Test360 AI
 
-> **Autonomous Multi-Tier Test Synthesis, Closed-Loop Execution, and Self-Healing Diagnostics Platform**  
-> *Final Year Project (FYP-I) — Department of Software Engineering, SZABIST University, Karachi Campus*
+> **Autonomous Pull Request Verification, Multi-Tier Test Synthesis, and Isolated Sandbox Diagnostics**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18.3-61dafb.svg)](https://reactjs.org/)
-[![MongoDB](https://img.shields.io/badge/Database-MongoDB%20Atlas-47A248.svg)](https://www.mongodb.com/)
+[![MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248.svg)](https://www.mongodb.com/)
 [![Express](https://img.shields.io/badge/Backend-Express.js-000000.svg)](https://expressjs.com/)
 
 ---
 
-## 👥 Project Team & Supervision
+## Overview
 
-- **Lead Developer**: Syed Ali Imran `(Reg. No. 2380254)`
-- **Co-Developer**: Muhammad Khizar `(Reg. No. 2380279)`
-- **Project Supervisor**: Sir Asif Khalid Qureshi *(Senior Lecturer, BSSE)*
-- **Institution**: Faculty of Computing and Engineering Sciences, SZABIST University, Karachi
+**Test360 AI** is an automated pull request testing and diagnostics platform built on the **MERN stack** (MongoDB, Express.js, React, Node.js). When code changes are introduced to a Node.js/Express repository, Test360 AI analyzes affected modules, generates targeted test matrices, executes checks in isolated environments, and surfaces clear failure diagnostics directly in an interactive dashboard.
 
----
+### Core Capabilities
 
-## 📌 Executive Summary
-
-Modern web teams ship through CI/CD pipelines, yet authoring and maintaining tests across **Unit**, **Integration/API**, **End-to-End UI**, and **Concurrency/Load** tiers is manual, slow, and error-prone. Standalone Large Language Models (LLMs) cannot execute code, do not understand multi-file dependencies, and hallucinate imports or assertions.
-
-**Test360 AI** is an autonomous quality engineering platform built on the **MERN Stack** (MongoDB, Express.js, React, Node.js). On every GitHub Pull Request, it:
-1. **Constructs a Multi-File AST Dependency Call Graph** (`@babel/parser`, `@babel/traverse`) across Express.js routes, middlewares, controllers, services, and Mongoose models to calculate the change's exact **Blast Radius**.
-2. **Synthesizes Constrained JSON Test Matrices** using Boundary-Value Analysis (BVA), Equivalence Partitioning (EP), and local code intelligence (SLM), validated strictly via **Zod**.
-3. **Compiles Concrete Executable Test Suites** deterministically for **Jest** (Unit), **Supertest** (API with in-memory MongoDB), **Playwright** (UI Smoke), and **Autocannon** (Concurrency/Load).
-4. **Executes in Ephemeral Docker Sandboxes** with strict cgroup limits (`--memory=1.5g`, `--cpus=1.0`, `--cap-drop=ALL`).
-5. **Performs Closed-Loop Self-Healing** by intercepting test failure stderr traces, distinguishing flaky test parameters from genuine application defects (up to 2 iterations).
-6. **Delivers Real-Time Scorecards & 1-Click Fixes** through an interactive React operations dashboard and automated GitHub PR scorecard comments.
+- **AST Dependency & Impact Mapping**: Parses Express routes, middlewares, controllers, services, and Mongoose models using `@babel/parser` and `@babel/traverse` to trace affected files and visualize the call graph in React Flow.
+- **Multi-Tier Test Synthesis**: Produces structured JSON test matrices validated with **Zod** and compiles executable test suites across **Unit** (Jest), **API Integration** (Supertest), **UI Smoke** (Playwright), and **Load** (Autocannon) tiers.
+- **Interactive PR Scorecard**: Switch between repositories and pull requests, filter passing/failing checks, paginate individual test cases, inspect historical quality and latency trends, and copy formatted PR comment summaries.
+- **Repository Management (CRUD)**: Attach GitHub repositories, verify repository metadata, map project directory conventions (`routesDir`, `controllersDir`, `servicesDir`, `modelsDir`), scan project architecture, and simulate PR webhook runs.
+- **Token-Based Authentication & Roles**: Salted `scrypt` password hashing, HMAC-signed Bearer session tokens, role support (`developer`, `reviewer`, `admin`), and profile management backed by MongoDB.
+- **Hardened Sandbox Execution Profile**: Designed around rootless, read-only Docker containers (`--user=node`, `--cap-drop=ALL`, `--memory=1.5g`, `--cpus=1.0`, `--network=none`).
 
 ---
 
-## 🚀 Key Features (Midterm FYP-I Scope)
+## Architecture
 
-- **MERN Stack Architecture**: Pure, dynamic data-driven backend using MongoDB Atlas and Express.js REST APIs with zero hardcoded credentials or mock fallbacks.
-- **Dynamic User Authentication & RBAC**: Account registration, login, profile management, and role-based permissions (`Developer`, `Reviewer`, `Administrator`).
-- **Repository Management (Full CRUD)**: Register target repositories, configure AST directory conventions (`routesDir`, `controllersDir`, `servicesDir`, `modelsDir`), update settings, and disconnect repositories.
-- **AST Blast Radius Call Graph**: Interactive React Flow Directed Acyclic Graph (DAG) visualizing architectural layers and highlighting impacted nodes.
-- **Hybrid Test Synthesis Matrix**: BVA fuzzer boundary partitions and deterministic template compilation for Jest and Supertest.
-- **Simplified Operations Dashboard**: Clean 5-tab interface designed for clarity and fast navigation.
-
----
-
-## 🏗️ Repository Architecture
-
-Test360 AI is organized as an **npm workspaces monorepo**:
+Organized as an **npm workspaces** monorepo:
 
 ```text
 Test360-AI/
-├── client/                     # React 18 + Vite Frontend
+├── client/                              # React 18 + Vite + TailwindCSS Frontend
 │   ├── src/
 │   │   ├── modules/
-│   │   │   ├── layout/         # Header & navigation components
-│   │   │   ├── scorecard/      # PR Scorecard & KPI components
-│   │   │   ├── ast-graph/      # React Flow AST dependency graph
-│   │   │   ├── test-spec/      # Test matrix & template viewers
-│   │   │   ├── repositories/   # Dynamic Repository CRUD view
-│   │   │   └── profile/        # User authentication & profile view
-│   │   ├── shared/             # API client, types, and utilities
-│   │   ├── App.jsx             # Main dashboard orchestrator
+│   │   │   ├── landing/                 # Public product landing page
+│   │   │   ├── auth/                    # Login & registration flows
+│   │   │   ├── layout/                  # Top navigation & workspace controls
+│   │   │   ├── scorecard/               # Overview KPIs, paginated check inspector & PR history
+│   │   │   ├── ast-graph/               # Interactive React Flow code dependency map
+│   │   │   ├── test-spec/               # Test matrix & generated suite viewers
+│   │   │   ├── repositories/            # Repository onboarding & CRUD management
+│   │   │   └── profile/                 # Authenticated profile & account settings
+│   │   ├── shared/                      # API client & shared data schemas
+│   │   ├── App.jsx                      # Auth routing & workspace state orchestrator
 │   │   └── main.jsx
 │   ├── package.json
 │   └── vite.config.js
 │
-├── server/                     # Node.js + Express 4 Backend
+├── server/                              # Node.js (ESM) + Express Backend
 │   ├── src/
-│   │   ├── config/             # Database, Redis, and environment configs
+│   │   ├── config/                      # Env validation (Zod), MongoDB & Redis setup
 │   │   ├── modules/
-│   │   │   ├── auth/           # User model, auth controller & service
-│   │   │   ├── repositories/   # Repository model & CRUD services
-│   │   │   ├── pull-requests/  # PR execution run tracking & queue
-│   │   │   ├── ast-analysis/   # Babel AST parser & graph builder
-│   │   │   ├── test-synthesis/ # Zod schema & deterministic compiler
-│   │   │   ├── docker-sandbox/ # Container security & runner specs
-│   │   │   ├── mutation-testing/# AST mutation operators & Autocannon
-│   │   │   └── diagnostics-repair/# Plain-English triage & 1-click diff
-│   │   ├── routes.js           # Consolidated API router
-│   │   ├── seed.js             # MongoDB telemetry & collection seeder
-│   │   └── server.js           # Server entry point
-│   ├── .env.example            # Environment template
+│   │   │   ├── auth/                    # User schema, scrypt hashing, HMAC token auth
+│   │   │   ├── repositories/            # Repository CRUD, GitHub verification & PR simulation
+│   │   │   ├── pull-requests/           # PR run tracking, history, BullMQ queue & worker
+│   │   │   ├── ast-analysis/            # Babel AST parser & call graph builder
+│   │   │   ├── test-synthesis/          # Zod matrix validation & suite compiler
+│   │   │   ├── docker-sandbox/          # Container telemetry & runner configuration
+│   │   │   ├── mutation-testing/        # Mutant scoring & Autocannon metrics
+│   │   │   ├── diagnostics-repair/      # Defect triage & repair patch endpoints
+│   │   │   └── ingestion/               # GitHub webhook handler
+│   │   ├── routes.js                    # API router & /api/health endpoint
+│   │   ├── seed.js                      # Sample repository & telemetry seeder
+│   │   └── server.js                    # Application entry point
+│   ├── test-crud-suite.js               # End-to-end DB, Auth, and CRUD verification suite
+│   ├── .env.example
 │   └── package.json
 │
-├── .gitignore
-├── package.json                # Monorepo root workspace configuration
+├── package.json                         # Monorepo root workspace scripts
 └── README.md
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-| Domain | Technologies |
+| Layer | Technologies |
 | :--- | :--- |
-| **Frontend** | React 18, Vite, TailwindCSS, `@xyflow/react` (React Flow), Monaco Editor, Recharts, Lucide Icons |
-| **Backend** | Node.js (ES Modules), Express.js 4, `@babel/parser`, `@babel/traverse`, Zod, BullMQ, ioredis |
+| **Frontend** | React 18, Vite, TailwindCSS, `@xyflow/react`, Recharts, Monaco Editor, Lucide Icons |
+| **Backend** | Node.js (ES Modules), Express 4, `@babel/parser`, `@babel/traverse`, Zod, BullMQ, ioredis |
 | **Database** | MongoDB / MongoDB Atlas, Mongoose ODM |
-| **Testing Engines** | Jest (Unit), Supertest (API), Playwright (UI Smoke), Autocannon (Load Benchmark) |
-| **Sandbox & CI** | Docker Engine (cgroups v2, loopback isolation), GitHub REST API (Octokit) |
+| **Testing & Analysis** | Jest, Supertest, Playwright, Autocannon |
+| **Integrations** | GitHub REST API (`@octokit/rest`), Docker Engine |
 
 ---
 
-## ⚙️ Environment Configuration
+## Getting Started
 
-Create a `.env` file in the `server/` directory (you can copy from `server/.env.example`):
+### Prerequisites
+
+- **Node.js** `v20+`
+- **MongoDB** (local instance or MongoDB Atlas connection string)
+- **Redis** *(optional — BullMQ gracefully falls back to in-process execution when Redis is unavailable)*
+
+### 1. Install Dependencies
 
 ```bash
-# Server Port & Environment
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Copy `server/.env.example` to `server/.env` and update the values for your environment:
+
+```bash
+cp server/.env.example server/.env
+```
+
+Key variables in `server/.env` (validated at startup via `server/src/config/env.js`):
+
+```env
 PORT=5000
 NODE_ENV=development
 
-# MongoDB Connection String (Atlas or Local)
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.mlbhtwg.mongodb.net/Test360
+# MongoDB Connection
+MONGO_URI=mongodb://127.0.0.1:27017/test360_ai
 
-# Redis Connection (BullMQ Queue)
+# Redis Connection (BullMQ)
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-# GitHub App Integration
+# GitHub Integration & Token Signing
 GITHUB_APP_ID=1029384
-GITHUB_WEBHOOK_SECRET=test360_super_secret_webhook_key_2026
+GITHUB_WEBHOOK_SECRET=your_webhook_and_session_secret
 
-# Local SLM Inference Service (Ollama)
-OLLAMA_BASE_URL=http://localhost:11434
+# Local SLM Service (Ollama)
+OLLAMA_BASE_URL=http://127.0.0.1:11434
 SLM_MODEL_NAME=test360-coder:1.5b-qlora-4bit
 
-# Docker Sandbox Resource Limits
+# Docker Sandbox Limits
 DOCKER_MEMORY_LIMIT=1.5g
 DOCKER_CPU_LIMIT=1.0
 DOCKER_USER=node
 SANDBOX_TIMEOUT_MS=120000
 ```
 
-> **Note**: Ensure your MongoDB Atlas password is correctly inserted and your IP address is whitelisted under **Network Access** in MongoDB Atlas.
+### 3. Seed Sample Telemetry *(Optional)*
 
----
-
-## 🚦 Getting Started
-
-### 1. Install Dependencies
-From the repository root:
-
-```bash
-npm install
-```
-
-### 2. Seed the Database
-Populate your MongoDB database with telemetry, initial repositories, users, and PR runs:
+Populate MongoDB with sample repositories, PR runs, AST call graphs, and test matrices:
 
 ```bash
 npm --workspace=server run seed
 ```
 
-### 3. Run the Development Servers
-In two separate terminals:
+### 4. Run the Development Servers
+
+Start the backend and frontend in separate terminals:
 
 ```bash
-# Terminal 1: Start Express Backend (Port 5000)
+# Terminal 1: Start Express API server (http://localhost:5000)
 npm run dev:server
 
-# Terminal 2: Start Vite Client (Port 3000)
+# Terminal 2: Start Vite React client (http://localhost:3000)
 npm run dev:client
 ```
 
-Open **`http://localhost:3000`** in your browser.
+Open **`http://localhost:3000`** in your browser. Create an account via **Get Started** or sign in with an existing account from your database.
 
 ---
 
-## 📡 REST API Reference
+## Testing & Verification
+
+Run the backend integration test suite to verify MongoDB connectivity, authentication, user CRUD, repository CRUD (including cascade cleanup), and test matrix validation:
+
+```bash
+npm --workspace=server test
+```
+
+Build the frontend production bundle:
+
+```bash
+npm run build:client
+```
+
+---
+
+## REST API Reference
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Register a new user account with role permissions |
-| `POST` | `/api/auth/login` | Authenticate user via email or GitHub handle |
-| `GET` | `/api/auth/profile/:id` | Fetch authenticated user profile |
-| `PUT` | `/api/auth/profile/:id` | Update profile information and active role |
-| `GET` | `/api/auth/users` | List all registered system users |
-| `GET` | `/api/repositories` | List all connected Express.js repositories |
-| `POST` | `/api/repositories` | Connect a new repository and directory conventions |
-| `PUT` | `/api/repositories/:owner/:repo/config` | Update convention directory paths (`routesDir`, etc.) |
-| `DELETE` | `/api/repositories/:owner/:repo` | Disconnect / remove repository |
-| `GET` | `/api/pull-requests/:repo/:prNumber` | Retrieve active PR run scorecard & verdicts |
-| `GET` | `/api/pull-requests/history` | Get historical regression metrics across runs |
-| `GET` | `/api/ast/:repo/:commitSha` | Fetch AST call graph nodes, edges, and blast radius |
-| `GET` | `/api/test-specs/:prNumber/:commitSha` | Fetch Zod-validated test matrix and compiled suites |
-| `GET` | `/api/health` | System health check and engine telemetry |
+| `GET` | `/api/health` | Service health and live MongoDB connection status |
+| `POST` | `/api/auth/register` | Register a new user account |
+| `POST` | `/api/auth/login` | Authenticate credentials and issue a Bearer token |
+| `GET` | `/api/auth/me` | Resolve authenticated user from Bearer token |
+| `GET` | `/api/auth/profile/:id` | Fetch user profile by ID |
+| `PUT` | `/api/auth/profile/:id` | Update user profile details and role |
+| `DELETE` | `/api/auth/profile/:id` | Delete user account |
+| `GET` | `/api/repositories` | List connected repositories |
+| `GET` | `/api/repositories/verify` | Verify GitHub repository metadata |
+| `POST` | `/api/repositories` | Attach a repository and generate initial baseline telemetry |
+| `GET` | `/api/repositories/:owner/:repo` | Fetch single repository details |
+| `POST` | `/api/repositories/:owner/:repo/scan` | Scan repository conventions and update AST graph |
+| `PUT` | `/api/repositories/:owner/:repo/config` | Update repository branch and directory conventions |
+| `POST` | `/api/repositories/simulate-pr` | Simulate a GitHub pull request webhook event |
+| `DELETE` | `/api/repositories/:owner/:repo` | Remove repository and cascade-delete associated telemetry |
+| `GET` | `/api/pull-requests/latest` | Retrieve scorecard for the latest or specified PR number |
+| `GET` | `/api/pull-requests/history` | Retrieve historical PR metrics for a repository |
+| `POST` | `/api/pull-requests/rerun` | Trigger a pipeline rerun |
+| `GET` | `/api/ast/graph` | Fetch AST dependency nodes and edges |
+| `GET` | `/api/test-specs` | Retrieve synthesized test matrix and compiled suites |
+| `POST` | `/api/test-specs/validate` | Validate a JSON test matrix against Zod schemas |
 
 ---
 
-## 📅 FYP Milestone Roadmap
+## Roadmap
 
-- [x] **Week 1–3**: Project Proposal Defence & Supervisor Alignment *(Completed)*
-- [x] **Week 4–5**: Software Requirements Specification (SRS) & UI Architecture *(Completed)*
-- [x] **Week 6–7**: Database Schema, MERN Backend & CRUD Implementation *(Completed)*
-- [x] **Week 8–9 (Midterm Evaluation)**: Working UI, MongoDB Connectivity, Authentication, User Management, Initial CRUD *(Completed)*
-- [ ] **FYP-II Phase 1**: Live Docker Sandbox execution runner with real container lifecycle
-- [ ] **FYP-II Phase 2**: Automated 2-iteration closed-loop self-healing on container exit codes
-- [ ] **FYP-II Phase 3**: Live AST mutation testing engine (20-mutant cap) and Autocannon load testing
-- [ ] **FYP-II Phase 4**: GitHub App live webhook delivery & 1-Click Repair commit pushing
+- Live Docker container runner orchestration with ephemeral volume mounting and stream capture
+- Automated multi-iteration self-healing loop on container test failures
+- Live AST mutation testing runner and automated Autocannon load profiling
+- Direct GitHub App webhook delivery and automated PR repair commits
 
 ---
 
-## 📜 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Licensed under the MIT License.

@@ -30,6 +30,7 @@ const resolveInitialPublicView = () => {
 export const App = () => {
   const [currentTab, setCurrentTab] = useState('overview');
   const [selectedRepo, setSelectedRepo] = useState('szabist-se/ecommerce-express-api');
+  const [selectedPrNumber, setSelectedPrNumber] = useState(null);
   const [isRerunning, setIsRerunning] = useState(false);
 
   // Authenticated session state
@@ -101,7 +102,9 @@ export const App = () => {
         }
       }
 
-      const prRes = await apiClient.getPullRequestRun(selectedRepo).catch(() => null);
+      const prRes = await apiClient
+        .getPullRequestRun(selectedRepo, selectedPrNumber)
+        .catch(() => null);
       if (prRes?.run) {
         setPrScorecard(prRes.run);
       }
@@ -116,7 +119,9 @@ export const App = () => {
         setAstNodes(astRes.nodes);
       }
 
-      const specRes = await apiClient.getTestSpecMatrix(selectedRepo).catch(() => null);
+      const specRes = await apiClient
+        .getTestSpecMatrix(selectedRepo, selectedPrNumber)
+        .catch(() => null);
       if (specRes?.testCases?.length) {
         setTestCases(specRes.testCases);
       }
@@ -129,7 +134,7 @@ export const App = () => {
     } catch (err) {
       console.warn('[Test360 AI] API fetch fallback active:', err.message);
     }
-  }, [currentUser, selectedRepo]);
+  }, [currentUser, selectedRepo, selectedPrNumber]);
 
   useEffect(() => {
     restoreSession();
@@ -157,12 +162,18 @@ export const App = () => {
     navigatePublicView('landing');
   };
 
+  const handleSelectRepo = (repoFullName) => {
+    setSelectedRepo(repoFullName);
+    setSelectedPrNumber(null);
+  };
+
   // Dynamic Repository CRUD Handlers
   const handleCreateRepo = async (repoData) => {
     const res = await apiClient.createRepository(repoData);
     if (res?.repository) {
       setRepositories((prev) => [res.repository, ...prev]);
       setSelectedRepo(res.repository.fullName);
+      setSelectedPrNumber(null);
       await loadData();
     }
     return res;
@@ -248,7 +259,7 @@ export const App = () => {
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         selectedRepo={selectedRepo}
-        onSelectRepo={setSelectedRepo}
+        onSelectRepo={handleSelectRepo}
         repositories={repositories}
         currentUser={currentUser}
         onRerunPipeline={handleRerunPipeline}
@@ -262,7 +273,11 @@ export const App = () => {
           <View1Scorecard
             scorecard={prScorecard}
             historicalRuns={historicalRuns}
+            selectedPrNumber={selectedPrNumber}
+            onSelectPrNumber={setSelectedPrNumber}
             onNavigateToStage={setCurrentTab}
+            onRerunPipeline={handleRerunPipeline}
+            isRerunning={isRerunning}
           />
         )}
 

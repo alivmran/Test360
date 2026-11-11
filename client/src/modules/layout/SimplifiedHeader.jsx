@@ -26,11 +26,11 @@ export const SimplifiedHeader = ({
   onSignOut,
 }) => {
   const tabs = [
-    { id: 'overview', label: 'PR Scorecard', icon: GitPullRequest },
-    { id: 'ast-graph', label: 'AST Blast Radius', icon: Network },
-    { id: 'test-spec', label: 'Test Synthesis', icon: Layers },
-    { id: 'repositories', label: 'Repositories (CRUD)', icon: FolderGit2 },
-    { id: 'profile', label: 'Profile & Auth', icon: User },
+    { id: 'overview', label: 'Overview', icon: GitPullRequest },
+    { id: 'ast-graph', label: 'Code Map', icon: Network },
+    { id: 'test-spec', label: 'Tests', icon: Layers },
+    { id: 'repositories', label: 'Repositories', icon: FolderGit2 },
+    { id: 'profile', label: 'Account', icon: User },
   ];
 
   return (
@@ -41,11 +41,11 @@ export const SimplifiedHeader = ({
           onClick={() => onSelectTab('overview')}
           className="flex items-center space-x-2.5 cursor-pointer"
         >
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm">
-            <Cpu size={18} />
+          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950">
+            <Cpu size={17} />
           </div>
-          <span className="font-bold tracking-tight text-zinc-100 text-sm hidden sm:inline">
-            Test360 <span className="text-indigo-400">AI</span>
+          <span className="font-semibold tracking-tight text-zinc-100 text-sm hidden sm:inline">
+            Test360 AI
           </span>
         </div>
 
@@ -90,7 +90,7 @@ export const SimplifiedHeader = ({
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Icon size={14} className={isActive ? 'text-indigo-400' : 'text-zinc-500'} />
+              <Icon size={14} className={isActive ? 'text-zinc-100' : 'text-zinc-500'} />
               <span className="hidden lg:inline">{tab.label}</span>
             </button>
           );
@@ -107,10 +107,10 @@ export const SimplifiedHeader = ({
               ? 'bg-zinc-900 text-zinc-500 border-zinc-800 cursor-wait'
               : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border-zinc-800'
           }`}
-          title="Trigger autonomous AST multi-tier analysis run"
+          title="Re-run checks for this pull request"
         >
-          <RotateCw size={13} className={isRerunning ? 'animate-spin text-indigo-400' : 'text-zinc-400'} />
-          <span className="hidden sm:inline">{isRerunning ? 'Analyzing...' : 'Run PR Check'}</span>
+          <RotateCw size={13} className={isRerunning ? 'animate-spin text-zinc-300' : 'text-zinc-400'} />
+          <span className="hidden sm:inline">{isRerunning ? 'Running...' : 'Run Checks'}</span>
         </button>
 
         {/* User Pill & Sign Out */}

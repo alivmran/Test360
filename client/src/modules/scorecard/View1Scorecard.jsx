@@ -1,11 +1,12 @@
-import React from 'react';
-import { 
-  AlertCircle, 
-  CheckCircle2, 
-  GitCommit, 
-  GitPullRequest, 
+import React, { useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  GitBranch,
+  GitPullRequest,
+  Copy,
+  Check,
   ArrowRight,
-  ExternalLink 
 } from 'lucide-react';
 import { KpiCards } from './KpiCards';
 import { ExecutionTable } from './ExecutionTable';
@@ -13,159 +14,258 @@ import { HistoricalRegressionChart } from './HistoricalRegressionChart';
 
 export const View1Scorecard = ({
   scorecard,
-  historicalRuns,
+  historicalRuns = [],
+  selectedPrNumber,
+  onSelectPrNumber,
   onNavigateToStage,
+  onRerunPipeline,
+  isRerunning,
 }) => {
+  const [activeSubTab, setActiveSubTab] = useState('checks'); // 'checks' | 'history' | 'summary'
+  const [selectedTier, setSelectedTier] = useState(null);
+  const [copiedSummary, setCopiedSummary] = useState(false);
+
   if (!scorecard) {
     return (
       <div className="p-12 text-center text-zinc-400 font-sans text-sm">
-        Loading test summary...
+        Loading pull request summary...
       </div>
     );
   }
 
   const isFailed = scorecard.status === 'failed' || scorecard.tiers?.api?.status === 'failed';
+  const unit = scorecard.tiers?.unit;
+  const api = scorecard.tiers?.api;
+  const uiSmoke = scorecard.tiers?.uiSmoke;
+  const speedMs = scorecard.latency?.p90 ?? scorecard.tiers?.load?.p90 ?? 38;
+  const qualityScore = scorecard.mutationKillScore?.score ?? scorecard.mutationScore?.score ?? 85;
+
+  const sortedPrOptions = [...(historicalRuns || [])].sort((a, b) => b.prNumber - a.prNumber);
+
+  const handleCardAction = (action) => {
+    if (action === 'checks') {
+      setActiveSubTab('checks');
+      setSelectedTier(isFailed ? 'api' : 'unit');
+    } else if (action === 'speed') {
+      setActiveSubTab('checks');
+      setSelectedTier('load');
+    }
+  };
+
+  const handleSelectHistoricalPr = (prNum) => {
+    onSelectPrNumber?.(prNum);
+    setSelectedTier(null);
+    setActiveSubTab('checks');
+  };
+
+  const markdownSummary = [
+    `### Test360 AI Check: ${isFailed ? 'Issue Found' : 'All Passed'} (PR #${scorecard.prNumber})`,
+    `- **Unit Tests:** ${unit?.passed ?? 16}/${unit?.total ?? 16} passed`,
+    `- **API Tests:** ${api?.passed ?? 9}/${api?.total ?? 10} passed`,
+    `- **Browser Tests:** ${uiSmoke?.passed ?? 4}/${uiSmoke?.total ?? 4} passed`,
+    `- **API Speed:** ${speedMs} ms`,
+    `- **Test Quality:** ${Number(qualityScore).toFixed(0)}%`,
+    isFailed
+      ? `\n**Issue:** ${api?.failureMessage || scorecard.isolatedDefect?.description || 'Check failed on invalid input.'}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const handleCopySummary = () => {
+    navigator.clipboard.writeText(markdownSummary);
+    setCopiedSummary(true);
+    setTimeout(() => setCopiedSummary(false), 2000);
+  };
 
   return (
     <div className="p-6 sm:p-8 space-y-6 max-w-6xl mx-auto">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-zinc-800 gap-4">
-        <div>
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-5 border-b border-zinc-800 gap-4">
+        <div className="min-w-0">
           <div className="flex items-center space-x-2 text-xs text-zinc-400 mb-1">
-            <span className="font-semibold text-zinc-300">{scorecard.repository}</span>
+            <span>{scorecard.repository}</span>
             <span>/</span>
-            <span>Pull Request #{scorecard.prNumber}</span>
+            <span>PR #{scorecard.prNumber}</span>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-50">
+          <h1 className="text-xl font-bold tracking-tight text-zinc-50 truncate">
             {scorecard.prTitle}
           </h1>
-          <div className="flex items-center space-x-3 text-xs text-zinc-400 mt-2 font-mono">
-            <span className="flex items-center space-x-1">
-              <GitCommit size={13} className="text-zinc-500" />
-              <span>{(scorecard.commitSha || '').substring(0, 7)}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mt-1.5">
+            <span className="inline-flex items-center space-x-1 font-mono">
+              <GitBranch size={12} className="text-zinc-500" />
+              <span>{scorecard.branch}</span>
             </span>
-            <span>•</span>
-            <span>Branch: <strong className="text-zinc-300 font-normal">{scorecard.branch}</strong></span>
-            <span>•</span>
-            <span>Author: <strong className="text-zinc-300 font-normal">@{scorecard.author}</strong></span>
+            <span>·</span>
+            <span>by @{scorecard.author}</span>
           </div>
         </div>
 
-        {/* PR Status Verdict */}
-        <div className="flex items-center space-x-2 self-start md:self-auto">
-          {isFailed ? (
-            <div className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/30 rounded-lg flex items-center space-x-2">
-              <AlertCircle size={15} className="text-rose-400" />
-              <span className="text-xs font-semibold text-rose-300">
-                1 Bug Found — Fix Suggested
-              </span>
-            </div>
-          ) : (
-            <div className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center space-x-2">
-              <CheckCircle2 size={15} className="text-emerald-400" />
-              <span className="text-xs font-semibold text-emerald-300">
-                All Tests Passed — Ready to Merge
-              </span>
-            </div>
+        {/* Interactive PR Selector + Status */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          {sortedPrOptions.length > 0 && (
+            <select
+              aria-label="Select Pull Request"
+              value={selectedPrNumber ?? scorecard.prNumber}
+              onChange={(e) => handleSelectHistoricalPr(Number(e.target.value))}
+              className="bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-600 cursor-pointer"
+            >
+              {sortedPrOptions.map((pr) => (
+                <option key={pr.prNumber} value={pr.prNumber}>
+                  PR #{pr.prNumber} · {pr.status === 'failed' ? 'Issue found' : 'Passed'}
+                </option>
+              ))}
+            </select>
           )}
 
-          <button
-            onClick={() => onNavigateToStage('test-spec')}
-            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg flex items-center space-x-1 transition-colors"
-          >
-            <span>View Generated Tests</span>
-            <ArrowRight size={13} />
-          </button>
+          {isFailed ? (
+            <div className="px-3 py-1.5 bg-rose-500/10 border border-rose-500/30 rounded-lg inline-flex items-center space-x-1.5 text-xs font-medium text-rose-300">
+              <AlertCircle size={14} className="text-rose-400" />
+              <span>1 issue found</span>
+            </div>
+          ) : (
+            <div className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg inline-flex items-center space-x-1.5 text-xs font-medium text-emerald-300">
+              <CheckCircle2 size={14} className="text-emerald-400" />
+              <span>Ready to merge</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Top 4 Friendly KPI Cards */}
-      <KpiCards scorecard={scorecard} onNavigateToStage={onNavigateToStage} />
+      {/* 4 Interactive Summary Cards */}
+      <KpiCards
+        scorecard={scorecard}
+        onNavigateToStage={onNavigateToStage}
+        onCardAction={handleCardAction}
+      />
 
-      {/* Main Content: Test Execution Breakdown + PR Bot Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ExecutionTable scorecard={scorecard} onNavigateToStage={onNavigateToStage} />
+      {/* Focused Sub-Navigation Tabs */}
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div className="flex items-center space-x-1 bg-zinc-900/80 border border-zinc-800 rounded-lg p-1">
+          {[
+            { id: 'checks', label: 'Checks' },
+            { id: 'history', label: `History (${sortedPrOptions.length})` },
+            { id: 'summary', label: 'PR Comment' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveSubTab(tab.id)}
+              className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                activeSubTab === tab.id
+                  ? 'bg-zinc-800 text-zinc-100'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Friendly GitHub Bot Comment Card */}
-        <div>
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden flex flex-col h-full">
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/80">
-              <div className="flex items-center space-x-2 text-xs font-medium text-zinc-300">
-                <GitPullRequest size={14} className="text-indigo-400" />
-                <span>GitHub Bot PR Comment</span>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded-full font-mono">
-                Auto-Posted
-              </span>
+        <button
+          type="button"
+          onClick={() => onNavigateToStage?.('test-spec')}
+          className="text-xs text-zinc-400 hover:text-zinc-100 inline-flex items-center space-x-1 transition-colors"
+        >
+          <span>All test cases</span>
+          <ArrowRight size={13} />
+        </button>
+      </div>
+
+      {/* Active Sub-View (1 focused view at a time) */}
+      {activeSubTab === 'checks' && (
+        <ExecutionTable
+          scorecard={scorecard}
+          selectedTier={selectedTier}
+          onSelectTier={setSelectedTier}
+          onNavigateToStage={onNavigateToStage}
+          onRerunPipeline={onRerunPipeline}
+          isRerunning={isRerunning}
+        />
+      )}
+
+      {activeSubTab === 'history' && (
+        <HistoricalRegressionChart
+          historicalRuns={historicalRuns}
+          activePrNumber={scorecard.prNumber}
+          onSelectPr={handleSelectHistoricalPr}
+        />
+      )}
+
+      {activeSubTab === 'summary' && (
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden max-w-2xl">
+          <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-xs font-medium text-zinc-200">
+              <GitPullRequest size={14} className="text-zinc-400" />
+              <span>GitHub PR Comment Preview</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs inline-flex items-center space-x-1.5 transition-colors"
+            >
+              {copiedSummary ? (
+                <>
+                  <Check size={12} className="text-emerald-400" />
+                  <span className="text-emerald-400">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  <span>Copy Markdown</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4 text-xs">
+            <div className="flex items-center space-x-2 text-zinc-400 pb-3 border-b border-zinc-800/80">
+              <span className="font-semibold text-zinc-200">test360-bot</span>
+              <span>posted a summary on PR #{scorecard.prNumber}</span>
             </div>
 
-            <div className="p-4 text-xs space-y-3 flex-1 text-zinc-300 leading-relaxed">
-              <div className="flex items-center space-x-2 pb-2 border-b border-zinc-800/80 text-[11px] text-zinc-400">
-                <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
-                  T
-                </div>
-                <span className="font-semibold text-zinc-200">test360-bot</span>
-                <span>commented on this pull request</span>
+            <div className="space-y-2 bg-zinc-950 border border-zinc-800 rounded-lg p-4">
+              <div className="flex justify-between">
+                <span className="text-zinc-400">Unit Tests</span>
+                <span className="text-emerald-400 font-medium">
+                  {unit?.passed ?? 16} / {unit?.total ?? 16} passed
+                </span>
               </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="font-semibold text-zinc-100 flex items-center space-x-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${isFailed ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                  <span>Test360 Check: {isFailed ? 'Action Recommended' : 'Passed'}</span>
-                </div>
-
-                <div className="bg-zinc-950/70 border border-zinc-800 rounded-lg p-3 space-y-1.5 text-[11px]">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Unit Tests:</span>
-                    <span className="text-emerald-400 font-medium">16 / 16 Passed</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">API Integration:</span>
-                    <span className="text-rose-400 font-medium">9 Passed, 1 Issue</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Browser Smoke:</span>
-                    <span className="text-emerald-400 font-medium">4 / 4 Passed</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">API Speed (p90):</span>
-                    <span className="text-zinc-200 font-medium">38 ms</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Bug Catching Score:</span>
-                    <span className="text-emerald-400 font-medium">85% (17 of 20 bugs caught)</span>
-                  </div>
-                </div>
-
-                {isFailed && (
-                  <div className="p-2.5 bg-rose-950/20 border border-rose-900/40 rounded-lg text-[11px] space-y-1">
-                    <span className="font-semibold text-rose-300 block">Issue Details:</span>
-                    <p className="text-zinc-400">
-                      <code>checkoutController.ts</code> (line 64) needs a validation check for <code>quantity &gt; 0</code>.
-                    </p>
-                  </div>
-                )}
+              <div className="flex justify-between">
+                <span className="text-zinc-400">API Tests</span>
+                <span className={api?.status === 'failed' ? 'text-rose-400 font-medium' : 'text-emerald-400 font-medium'}>
+                  {api?.passed ?? 9} / {api?.total ?? 10} passed
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-400">Browser Tests</span>
+                <span className="text-emerald-400 font-medium">
+                  {uiSmoke?.passed ?? 4} / {uiSmoke?.total ?? 4} passed
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-400">API Speed</span>
+                <span className="text-zinc-200 font-medium">{speedMs} ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-400">Test Quality</span>
+                <span className="text-zinc-200 font-medium">{Number(qualityScore).toFixed(0)}%</span>
               </div>
             </div>
 
-            <div className="p-3 bg-zinc-900/80 border-t border-zinc-800 flex items-center justify-between text-xs">
-              <span className="text-[11px] text-zinc-500">Fast webhook &lt;100ms</span>
-              <button
-                onClick={() => onNavigateToStage('test-spec')}
-                className="text-xs text-indigo-400 hover:text-indigo-300 font-medium flex items-center space-x-1"
-              >
-                <span>Inspect Tests</span>
-                <ArrowRight size={12} />
-              </button>
-            </div>
+            {isFailed && (
+              <div className="p-3.5 bg-rose-950/20 border border-rose-900/40 rounded-lg space-y-1">
+                <div className="font-semibold text-rose-300">Issue found</div>
+                <p className="text-zinc-300 leading-relaxed">
+                  {api?.failureMessage ||
+                    scorecard.isolatedDefect?.description ||
+                    'An input validation issue was caught during API testing.'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Historical Pass Rate Trend */}
-      <HistoricalRegressionChart historicalRuns={historicalRuns} />
+      )}
     </div>
   );
 };
