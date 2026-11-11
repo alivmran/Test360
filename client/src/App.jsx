@@ -32,6 +32,7 @@ export const App = () => {
   const [selectedRepo, setSelectedRepo] = useState('szabist-se/ecommerce-express-api');
   const [selectedPrNumber, setSelectedPrNumber] = useState(null);
   const [isRerunning, setIsRerunning] = useState(false);
+  const [openAddRepoNonce, setOpenAddRepoNonce] = useState(0);
 
   // Authenticated session state
   const [currentUser, setCurrentUser] = useState(null);
@@ -167,6 +168,15 @@ export const App = () => {
     setSelectedPrNumber(null);
   };
 
+  const handleOpenAddRepository = useCallback(() => {
+    setCurrentTab('repositories');
+    setOpenAddRepoNonce((n) => n + 1);
+  }, []);
+
+  const handleConsumeAddRepoSignal = useCallback(() => {
+    setOpenAddRepoNonce(0);
+  }, []);
+
   // Dynamic Repository CRUD Handlers
   const handleCreateRepo = async (repoData) => {
     const res = await apiClient.createRepository(repoData);
@@ -260,6 +270,7 @@ export const App = () => {
         onSelectTab={setCurrentTab}
         selectedRepo={selectedRepo}
         onSelectRepo={handleSelectRepo}
+        onAddRepository={handleOpenAddRepository}
         repositories={repositories}
         currentUser={currentUser}
         onRerunPipeline={handleRerunPipeline}
@@ -302,6 +313,8 @@ export const App = () => {
             onScanRepo={handleScanRepo}
             onSimulatePr={handleSimulatePr}
             onNavigateTab={setCurrentTab}
+            openAddModalSignal={openAddRepoNonce}
+            onConsumeAddModalSignal={handleConsumeAddRepoSignal}
           />
         )}
 

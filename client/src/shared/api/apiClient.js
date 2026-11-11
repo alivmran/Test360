@@ -30,7 +30,34 @@ export const apiClient = {
       body: JSON.stringify(credentials),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Login failed');
+    if (!res.ok) {
+      const err = new Error(data.error || 'Login failed');
+      err.requiresVerification = Boolean(data.requiresVerification);
+      err.email = data.email;
+      throw err;
+    }
+    return data;
+  },
+
+  async verifyEmail({ email, code }) {
+    const res = await fetch(`${BASE_URL}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Verification failed');
+    return data;
+  },
+
+  async resendVerification({ email }) {
+    const res = await fetch(`${BASE_URL}/auth/resend-verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not resend code');
     return data;
   },
 

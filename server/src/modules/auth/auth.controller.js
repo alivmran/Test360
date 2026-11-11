@@ -5,9 +5,30 @@ export class AuthController {
     try {
       const result = await AuthService.registerUser(req.body);
       res.status(201).json({
-        message: 'User registered successfully',
+        message: 'Verification code sent to your email address',
         ...result,
       });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async verifyEmail(req, res) {
+    try {
+      const result = await AuthService.verifyEmailCode(req.body);
+      res.status(200).json({
+        message: 'Email verified successfully',
+        ...result,
+      });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  }
+
+  static async resendVerification(req, res) {
+    try {
+      const result = await AuthService.resendVerificationCode(req.body);
+      res.status(200).json(result);
     } catch (err) {
       res.status(400).json({ error: err.message });
     }
@@ -21,8 +42,12 @@ export class AuthController {
         ...result,
       });
     } catch (err) {
-      const status = err.message === 'Invalid email or password' ? 401 : 400;
-      res.status(status).json({ error: err.message });
+      const status =
+        err.statusCode || (err.message === 'Invalid email or password' ? 401 : 400);
+      res.status(status).json({
+        error: err.message,
+        ...(err.requiresVerification ? { requiresVerification: true, email: err.email } : {}),
+      });
     }
   }
 

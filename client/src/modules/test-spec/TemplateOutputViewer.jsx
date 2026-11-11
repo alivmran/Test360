@@ -1,33 +1,31 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 
+const SUITE_TABS = [
+  { id: 'supertest', label: 'API Tests', filename: 'supertest.api.test.ts', key: 'supertestApi', fallback: '// API test file' },
+  { id: 'jest', label: 'Unit Tests', filename: 'jest.unit.test.ts', key: 'jestUnit', fallback: '// Unit test file' },
+  { id: 'playwright', label: 'Browser Tests', filename: 'playwright.smoke.spec.ts', key: 'playwrightSmoke', fallback: '// Browser test file' },
+  { id: 'autocannon', label: 'Speed Tests', filename: 'autocannon.load.js', key: 'autocannonLoad', fallback: '// Speed test file' },
+];
+
 export const TemplateOutputViewer = ({
   templates = {},
   rawJsonMatrix = '',
-  showRawJson = false
+  showRawJson = false,
+  selectedTab: controlledTab,
+  onSelectTab,
 }) => {
-  const [selectedTab, setSelectedTab] = useState('supertest');
+  const [internalTab, setInternalTab] = useState('supertest');
   const [copied, setCopied] = useState(false);
 
-  const getTemplateCode = () => {
-    switch (selectedTab) {
-      case 'jest':
-        return { filename: 'jest.unit.test.ts', code: templates?.jestUnit || '// Unit template' };
-      case 'supertest':
-        return { filename: 'supertest.api.test.ts', code: templates?.supertestApi || '// Supertest template' };
-      case 'playwright':
-        return { filename: 'playwright.smoke.spec.ts', code: templates?.playwrightSmoke || '// Playwright smoke template' };
-      case 'autocannon':
-        return { filename: 'autocannon.load.js', code: templates?.autocannonLoad || '// Autocannon load template' };
-      default:
-        return { filename: 'supertest.api.test.ts', code: templates?.supertestApi || '' };
-    }
-  };
+  const selectedTab = controlledTab ?? internalTab;
+  const setSelectedTab = onSelectTab ?? setInternalTab;
 
-  const currentTemplate = getTemplateCode();
+  const activeSuite = SUITE_TABS.find((t) => t.id === selectedTab) || SUITE_TABS[0];
+  const currentCode = templates?.[activeSuite.key] || activeSuite.fallback;
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(showRawJson ? rawJsonMatrix : currentTemplate.code);
+    navigator.clipboard.writeText(showRawJson ? rawJsonMatrix : currentCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -35,56 +33,31 @@ export const TemplateOutputViewer = ({
   return (
     <div className="w-full lg:w-1/2 bg-zinc-950 flex flex-col h-full overflow-hidden">
       {/* Tabs & Copy */}
-      <div className="p-2 border-b border-zinc-800 bg-zinc-925 flex items-center justify-between shrink-0">
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => setSelectedTab('supertest')}
-            className={`px-3 py-1.5 text-xs font-mono rounded transition-colors ${
-              selectedTab === 'supertest'
-                ? 'bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            supertest.api.test.ts
-          </button>
-          <button
-            onClick={() => setSelectedTab('jest')}
-            className={`px-3 py-1.5 text-xs font-mono rounded transition-colors ${
-              selectedTab === 'jest'
-                ? 'bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            jest.unit.test.ts
-          </button>
-          <button
-            onClick={() => setSelectedTab('playwright')}
-            className={`px-3 py-1.5 text-xs font-mono rounded transition-colors ${
-              selectedTab === 'playwright'
-                ? 'bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            playwright.smoke.spec.ts
-          </button>
-          <button
-            onClick={() => setSelectedTab('autocannon')}
-            className={`px-3 py-1.5 text-xs font-mono rounded transition-colors ${
-              selectedTab === 'autocannon'
-                ? 'bg-zinc-800 text-zinc-100 font-semibold border border-zinc-700'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            autocannon.load.js
-          </button>
+      <div className="px-3 py-2.5 border-b border-zinc-800 bg-zinc-925 flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center space-x-1 overflow-x-auto">
+          {SUITE_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setSelectedTab(tab.id)}
+              className={`px-3 py-1.5 text-xs rounded-lg transition-colors whitespace-nowrap ${
+                selectedTab === tab.id
+                  ? 'bg-zinc-800 text-zinc-100 font-medium border border-zinc-700'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <button
+          type="button"
           onClick={handleCopy}
-          className="px-2.5 py-1 text-xs font-mono rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 flex items-center space-x-1.5 transition-colors"
+          className="px-3 py-1.5 text-xs rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 flex items-center space-x-1.5 transition-colors shrink-0"
         >
-          {copied ? <Check size={12} className="text-semantic-emerald" /> : <Copy size={12} />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
+          {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+          <span>{copied ? 'Copied' : 'Copy Code'}</span>
         </button>
       </div>
 
@@ -96,19 +69,20 @@ export const TemplateOutputViewer = ({
           </pre>
         ) : (
           <pre className="text-zinc-300 whitespace-pre leading-relaxed">
-            <code>{currentTemplate.code}</code>
+            <code>{currentCode}</code>
           </pre>
         )}
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-zinc-800 bg-zinc-925 flex items-center justify-between text-[11px] font-mono text-zinc-500 shrink-0">
-        <span className="text-zinc-400">
-          Deterministic Template Target: <strong>{currentTemplate.filename}</strong>
+      <div className="px-4 py-2.5 border-t border-zinc-800 bg-zinc-925 flex items-center justify-between text-xs text-zinc-400 shrink-0">
+        <span>
+          File:{' '}
+          <strong className="font-mono text-zinc-200">
+            {showRawJson ? 'test-matrix.json' : activeSuite.filename}
+          </strong>
         </span>
-        <span className="text-zinc-500">
-          Zero Free-Form Arbitrary Code Execution
-        </span>
+        <span className="text-zinc-500">Ready-to-run test template</span>
       </div>
     </div>
   );

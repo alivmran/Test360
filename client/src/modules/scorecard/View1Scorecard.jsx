@@ -25,6 +25,14 @@ export const View1Scorecard = ({
   const [selectedTier, setSelectedTier] = useState(null);
   const [copiedSummary, setCopiedSummary] = useState(false);
 
+  // Interactive PR Comment Builder state
+  const [commentViewMode, setCommentViewMode] = useState('preview'); // 'preview' | 'markdown'
+  const [commentVerdict, setCommentVerdict] = useState('auto'); // 'auto' | 'approve' | 'changes'
+  const [includeSuites, setIncludeSuites] = useState(true);
+  const [includeMetrics, setIncludeMetrics] = useState(true);
+  const [includeIssueDetails, setIncludeIssueDetails] = useState(true);
+  const [reviewerNote, setReviewerNote] = useState('');
+
   if (!scorecard) {
     return (
       <div className="p-12 text-center text-zinc-400 font-sans text-sm">
@@ -58,16 +66,27 @@ export const View1Scorecard = ({
     setActiveSubTab('checks');
   };
 
+  const resolvedVerdictLabel =
+    commentVerdict === 'approve'
+      ? 'Approved'
+      : commentVerdict === 'changes'
+      ? 'Changes Requested'
+      : isFailed
+      ? 'Issue Found'
+      : 'All Passed';
+
   const markdownSummary = [
-    `### Test360 AI Check: ${isFailed ? 'Issue Found' : 'All Passed'} (PR #${scorecard.prNumber})`,
-    `- **Unit Tests:** ${unit?.passed ?? 16}/${unit?.total ?? 16} passed`,
-    `- **API Tests:** ${api?.passed ?? 9}/${api?.total ?? 10} passed`,
-    `- **Browser Tests:** ${uiSmoke?.passed ?? 4}/${uiSmoke?.total ?? 4} passed`,
-    `- **API Speed:** ${speedMs} ms`,
-    `- **Test Quality:** ${Number(qualityScore).toFixed(0)}%`,
-    isFailed
+    `### Test360 AI Check: ${resolvedVerdictLabel} (PR #${scorecard.prNumber})`,
+    includeSuites
+      ? `- **Unit Tests:** ${unit?.passed ?? 16}/${unit?.total ?? 16} passed\n- **API Tests:** ${api?.passed ?? 9}/${api?.total ?? 10} passed\n- **Browser Tests:** ${uiSmoke?.passed ?? 4}/${uiSmoke?.total ?? 4} passed`
+      : '',
+    includeMetrics
+      ? `- **API Speed:** ${speedMs} ms\n- **Test Quality:** ${Number(qualityScore).toFixed(0)}%`
+      : '',
+    includeIssueDetails && isFailed
       ? `\n**Issue:** ${api?.failureMessage || scorecard.isolatedDefect?.description || 'Check failed on invalid input.'}`
       : '',
+    reviewerNote.trim() ? `\n**Reviewer note:** ${reviewerNote.trim()}` : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -193,74 +212,241 @@ export const View1Scorecard = ({
       )}
 
       {activeSubTab === 'summary' && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden max-w-2xl">
-          <div className="px-5 py-3.5 border-b border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-xs font-medium text-zinc-200">
-              <GitPullRequest size={14} className="text-zinc-400" />
-              <span>GitHub PR Comment Preview</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Left: Comment Controls */}
+          <div className="lg:col-span-5 bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 space-y-5 self-start">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-100">Customize PR Comment</h3>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Choose what details to include before copying to GitHub.
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={handleCopySummary}
-              className="px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs inline-flex items-center space-x-1.5 transition-colors"
-            >
-              {copiedSummary ? (
-                <>
-                  <Check size={12} className="text-emerald-400" />
-                  <span className="text-emerald-400">Copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={12} />
-                  <span>Copy Markdown</span>
-                </>
-              )}
-            </button>
+
+            <div className="space-y-2 text-xs">
+              <span className="text-zinc-300 font-medium block">Comment Status</span>
+              <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg p-1">
+                {[
+                  { id: 'auto', label: 'Auto' },
+                  { id: 'approve', label: 'Approve' },
+                  { id: 'changes', label: 'Needs Fix' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setCommentVerdict(opt.id)}
+                    className={`py-1.5 rounded-md font-medium transition-colors ${
+                      commentVerdict === opt.id
+                        ? 'bg-zinc-800 text-zinc-100'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2.5 text-xs">
+              <span className="text-zinc-300 font-medium block">Included Sections</span>
+              {[
+                {
+                  label: 'Test suite breakdown (Unit, API, Browser)',
+                  checked: includeSuites,
+                  onChange: setIncludeSuites,
+                },
+                {
+                  label: 'API speed & test quality metrics',
+                  checked: includeMetrics,
+                  onChange: setIncludeMetrics,
+                },
+                ...(isFailed
+                  ? [
+                      {
+                        label: 'Issue summary & failing file',
+                        checked: includeIssueDetails,
+                        onChange: setIncludeIssueDetails,
+                      },
+                    ]
+                  : []),
+              ].map((item) => (
+                <label
+                  key={item.label}
+                  className="flex items-center space-x-2.5 p-2.5 rounded-lg bg-zinc-950/70 border border-zinc-800 cursor-pointer hover:border-zinc-700 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={(e) => item.onChange(e.target.checked)}
+                    className="rounded border-zinc-700 bg-zinc-900 text-indigo-500 focus:ring-0"
+                  />
+                  <span className="text-zinc-300">{item.label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              <label htmlFor="reviewer-note" className="text-zinc-300 font-medium block">
+                Reviewer Note (optional)
+              </label>
+              <textarea
+                id="reviewer-note"
+                rows={3}
+                placeholder="Add a note for the PR author..."
+                value={reviewerNote}
+                onChange={(e) => setReviewerNote(e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+              />
+            </div>
           </div>
 
-          <div className="p-5 space-y-4 text-xs">
-            <div className="flex items-center space-x-2 text-zinc-400 pb-3 border-b border-zinc-800/80">
-              <span className="font-semibold text-zinc-200">test360-bot</span>
-              <span>posted a summary on PR #{scorecard.prNumber}</span>
+          {/* Right: Live GitHub Comment Preview / Raw Markdown */}
+          <div className="lg:col-span-7 bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden self-start">
+            <div className="px-5 py-3.5 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center space-x-2 text-xs font-medium text-zinc-200">
+                <GitPullRequest size={14} className="text-indigo-400" />
+                <span>GitHub PR Comment</span>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setCommentViewMode('preview')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                      commentViewMode === 'preview'
+                        ? 'bg-zinc-800 text-zinc-100'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Preview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCommentViewMode('markdown')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                      commentViewMode === 'markdown'
+                        ? 'bg-zinc-800 text-zinc-100'
+                        : 'text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Markdown
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopySummary}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium inline-flex items-center space-x-1.5 transition-colors"
+                >
+                  {copiedSummary ? (
+                    <>
+                      <Check size={12} />
+                      <span>Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={12} />
+                      <span>Copy Markdown</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-2 bg-zinc-950 border border-zinc-800 rounded-lg p-4">
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Unit Tests</span>
-                <span className="text-emerald-400 font-medium">
-                  {unit?.passed ?? 16} / {unit?.total ?? 16} passed
-                </span>
+            {commentViewMode === 'markdown' ? (
+              <div className="p-5 bg-zinc-950 font-mono text-xs text-zinc-300 overflow-x-auto">
+                <pre className="whitespace-pre-wrap leading-relaxed">{markdownSummary}</pre>
               </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">API Tests</span>
-                <span className={api?.status === 'failed' ? 'text-rose-400 font-medium' : 'text-emerald-400 font-medium'}>
-                  {api?.passed ?? 9} / {api?.total ?? 10} passed
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Browser Tests</span>
-                <span className="text-emerald-400 font-medium">
-                  {uiSmoke?.passed ?? 4} / {uiSmoke?.total ?? 4} passed
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">API Speed</span>
-                <span className="text-zinc-200 font-medium">{speedMs} ms</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Test Quality</span>
-                <span className="text-zinc-200 font-medium">{Number(qualityScore).toFixed(0)}%</span>
-              </div>
-            </div>
+            ) : (
+              <div className="p-5 space-y-4 text-xs">
+                <div className="flex items-center justify-between text-zinc-400 pb-3 border-b border-zinc-800/80">
+                  <div>
+                    <span className="font-semibold text-zinc-200">test360-bot</span>
+                    <span className="ml-1.5">posted on PR #{scorecard.prNumber}</span>
+                  </div>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                      commentVerdict === 'changes' || (commentVerdict === 'auto' && isFailed)
+                        ? 'bg-rose-500/15 text-rose-300'
+                        : 'bg-emerald-500/10 text-emerald-300'
+                    }`}
+                  >
+                    {resolvedVerdictLabel}
+                  </span>
+                </div>
 
-            {isFailed && (
-              <div className="p-3.5 bg-rose-950/20 border border-rose-900/40 rounded-lg space-y-1">
-                <div className="font-semibold text-rose-300">Issue found</div>
-                <p className="text-zinc-300 leading-relaxed">
-                  {api?.failureMessage ||
-                    scorecard.isolatedDefect?.description ||
-                    'An input validation issue was caught during API testing.'}
-                </p>
+                {(includeSuites || includeMetrics) && (
+                  <div className="space-y-2 bg-zinc-950 border border-zinc-800 rounded-lg p-4">
+                    {includeSuites && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Unit Tests</span>
+                          <span className="text-emerald-400 font-medium">
+                            {unit?.passed ?? 16} / {unit?.total ?? 16} passed
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">API Tests</span>
+                          <span
+                            className={
+                              api?.status === 'failed'
+                                ? 'text-rose-400 font-medium'
+                                : 'text-emerald-400 font-medium'
+                            }
+                          >
+                            {api?.passed ?? 9} / {api?.total ?? 10} passed
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Browser Tests</span>
+                          <span className="text-emerald-400 font-medium">
+                            {uiSmoke?.passed ?? 4} / {uiSmoke?.total ?? 4} passed
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {includeMetrics && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">API Speed</span>
+                          <span className="text-zinc-200 font-medium">{speedMs} ms</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Test Quality</span>
+                          <span className="text-zinc-200 font-medium">
+                            {Number(qualityScore).toFixed(0)}%
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {includeIssueDetails && isFailed && (
+                  <div className="p-3.5 bg-rose-950/20 border border-rose-900/40 rounded-lg space-y-1">
+                    <div className="font-semibold text-rose-300">Issue found</div>
+                    <p className="text-zinc-300 leading-relaxed">
+                      {api?.failureMessage ||
+                        scorecard.isolatedDefect?.description ||
+                        'An input validation issue was caught during API testing.'}
+                    </p>
+                  </div>
+                )}
+
+                {reviewerNote.trim() && (
+                  <div className="p-3.5 bg-zinc-950 border border-zinc-800 rounded-lg space-y-1">
+                    <div className="font-semibold text-zinc-200">Reviewer note</div>
+                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                      {reviewerNote.trim()}
+                    </p>
+                  </div>
+                )}
+
+                {!includeSuites && !includeMetrics && !(includeIssueDetails && isFailed) && !reviewerNote.trim() && (
+                  <div className="p-6 text-center text-zinc-500 border border-dashed border-zinc-800 rounded-lg">
+                    Select at least one section or add a note on the left.
+                  </div>
+                )}
               </div>
             )}
           </div>

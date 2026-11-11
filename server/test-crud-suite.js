@@ -1,4 +1,5 @@
 import http from 'http';
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { createApp } from './src/app.js';
 import { env } from './src/config/env.js';
@@ -77,9 +78,48 @@ async function runCrudVerification() {
     });
     const registerData = await registerRes.json();
     assert(registerRes.status === 201, 'User registered with status 201');
+    assert(registerData.requiresVerification === true, 'Registration requires email OTP verification');
+    assert(!registerData.token, 'Unverified registration does not issue session token yet');
     assert(registerData.user?.email === testEmail, 'Created user has correct email');
     createdUserId = registerData.user?._id;
     console.log(`  Created User ID: ${createdUserId}`);
+
+    // Confirm unverified user cannot sign in yet
+    const unverifiedLoginRes = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        password: 'securepassword123',
+      }),
+    });
+    const unverifiedLoginData = await unverifiedLoginRes.json();
+    assert(unverifiedLoginRes.status === 403, 'Unverified login rejected with 403');
+    assert(unverifiedLoginData.requiresVerification === true, 'Unverified login flags requiresVerification');
+
+    // Verify invalid OTP rejection and valid OTP acceptance
+    const badVerifyRes = await fetch(`${baseUrl}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testEmail, code: '000000' }),
+    });
+    assert(badVerifyRes.status === 400, 'Wrong email OTP rejected with 400');
+
+    const knownTestOtp = '654321';
+    const knownOtpHash = crypto.createHash('sha256').update(knownTestOtp).digest('hex');
+    await User.findByIdAndUpdate(createdUserId, {
+      emailVerificationCodeHash: knownOtpHash,
+      emailVerificationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    const verifyEmailRes = await fetch(`${baseUrl}/auth/verify-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testEmail, code: knownTestOtp }),
+    });
+    const verifyEmailData = await verifyEmailRes.json();
+    assert(verifyEmailRes.status === 200, 'Valid email OTP verified with 200');
+    assert(Boolean(verifyEmailData.token) && verifyEmailData.user?.isEmailVerified === true, 'Verification marks user verified and returns session token');
 
     // 3.2 READ USERS (LIST)
     const listUsersRes = await fetch(`${baseUrl}/auth/users`);

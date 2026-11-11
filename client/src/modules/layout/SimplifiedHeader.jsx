@@ -18,6 +18,7 @@ export const SimplifiedHeader = ({
   onSelectTab,
   selectedRepo,
   onSelectRepo,
+  onAddRepository,
   repositories = [],
   currentUser,
   onRerunPipeline,
@@ -58,7 +59,12 @@ export const SimplifiedHeader = ({
             value={selectedRepo}
             onChange={(e) => {
               if (e.target.value === '__add__') {
-                onSelectTab('repositories');
+                e.target.blur();
+                if (onAddRepository) {
+                  onAddRepository();
+                } else {
+                  onSelectTab('repositories');
+                }
               } else {
                 onSelectRepo(e.target.value);
               }

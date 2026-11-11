@@ -44,6 +44,22 @@ const UserSchema = new Schema(
       type: String,
       default: '',
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: true,
+    },
+    emailVerificationCodeHash: {
+      type: String,
+      default: '',
+    },
+    emailVerificationExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    emailVerificationSentAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

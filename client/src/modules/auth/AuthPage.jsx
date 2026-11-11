@@ -20,7 +20,12 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
   const [mode, setMode] = useState(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [noticeMsg, setNoticeMsg] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [deliveryMode, setDeliveryMode] = useState('smtp');
 
   const [loginForm, setLoginForm] = useState({
     email: '',
@@ -39,18 +44,25 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
   useEffect(() => {
     setMode(initialMode);
     setErrorMsg('');
+    setNoticeMsg('');
+    setPendingVerificationEmail('');
+    setVerificationCode('');
     setShowPassword(false);
   }, [initialMode]);
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
     setErrorMsg('');
+    setNoticeMsg('');
+    setPendingVerificationEmail('');
+    setVerificationCode('');
     setShowPassword(false);
   };
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setNoticeMsg('');
     setIsSubmitting(true);
     try {
       const res = await apiClient.login({
@@ -59,7 +71,12 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
       });
       onAuthSuccess(res);
     } catch (err) {
-      setErrorMsg(err.message || 'Unable to sign in. Please check your credentials.');
+      if (err.requiresVerification) {
+        setPendingVerificationEmail(err.email || loginForm.email.trim());
+        setNoticeMsg('Please verify your email to finish activating your account.');
+      } else {
+        setErrorMsg(err.message || 'Unable to sign in. Please check your credentials.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -68,6 +85,7 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setNoticeMsg('');
 
     if (registerForm.password.length < 4) {
       setErrorMsg('Password must be at least 4 characters long.');
@@ -84,11 +102,60 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
         githubUsername: registerForm.githubUsername.trim(),
         organization: registerForm.organization.trim(),
       });
-      onAuthSuccess(res);
+      if (res.requiresVerification) {
+        setPendingVerificationEmail(res.email || registerForm.email.trim());
+        setDeliveryMode(res.deliveryMode || 'smtp');
+        setVerificationCode('');
+        setNoticeMsg(
+          res.deliveryMode === 'console'
+            ? 'SMTP is not configured yet—check your server console for the 6-digit code.'
+            : `We sent a 6-digit verification code to ${res.email || registerForm.email.trim()}.`
+        );
+      } else {
+        onAuthSuccess(res);
+      }
     } catch (err) {
       setErrorMsg(err.message || 'Unable to create account.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyCodeSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setNoticeMsg('');
+    setIsSubmitting(true);
+    try {
+      const res = await apiClient.verifyEmail({
+        email: pendingVerificationEmail,
+        code: verificationCode.trim(),
+      });
+      onAuthSuccess(res);
+    } catch (err) {
+      setErrorMsg(err.message || 'Invalid verification code.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (!pendingVerificationEmail) return;
+    setErrorMsg('');
+    setNoticeMsg('');
+    setIsResending(true);
+    try {
+      const res = await apiClient.resendVerification({ email: pendingVerificationEmail });
+      setDeliveryMode(res.deliveryMode || 'smtp');
+      setNoticeMsg(
+        res.deliveryMode === 'console'
+          ? 'New code generated—check your server terminal output.'
+          : `Sent a new verification code to ${pendingVerificationEmail}.`
+      );
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to resend code.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -189,14 +256,27 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
           <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-6">
             <div>
               <h2 className="text-xl font-semibold tracking-tight text-zinc-50">
-                {mode === 'login' ? 'Sign in' : 'Create account'}
+                {pendingVerificationEmail
+                  ? 'Check your email'
+                  : mode === 'login'
+                  ? 'Sign in'
+                  : 'Create account'}
               </h2>
               <p className="text-xs text-zinc-400 mt-1">
-                {mode === 'login'
+                {pendingVerificationEmail
+                  ? `Enter the 6-digit code sent to ${pendingVerificationEmail}`
+                  : mode === 'login'
                   ? 'Enter your email and password to continue.'
                   : 'Enter your details below to register.'}
               </p>
             </div>
+
+            {noticeMsg && (
+              <div className="p-3 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-start space-x-2">
+                <Mail size={15} className="text-indigo-400 shrink-0 mt-0.5" />
+                <span>{noticeMsg}</span>
+              </div>
+            )}
 
             {errorMsg && (
               <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-800/60 text-xs text-rose-200 flex items-start space-x-2">
@@ -205,7 +285,76 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
               </div>
             )}
 
-            {mode === 'login' ? (
+            {pendingVerificationEmail ? (
+              <form onSubmit={handleVerifyCodeSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="otp-code" className="block text-xs font-medium text-zinc-300 mb-1.5">
+                    6-Digit Verification Code
+                  </label>
+                  <input
+                    id="otp-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="123456"
+                    value={verificationCode}
+                    onChange={(e) =>
+                      setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
+                    className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-lg text-center font-mono text-xl tracking-[0.4em] text-zinc-100 placeholder:text-zinc-700 focus:outline-none focus:border-indigo-500 transition-colors"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || verificationCode.length < 6}
+                  className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-center space-x-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Verify &amp; Continue</span>
+                      <ArrowRight size={15} />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center justify-between text-xs text-zinc-400 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={isResending}
+                    className="text-indigo-400 hover:text-indigo-300 font-medium disabled:opacity-50"
+                  >
+                    {isResending ? 'Sending...' : 'Resend code'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingVerificationEmail('');
+                      setVerificationCode('');
+                      setErrorMsg('');
+                      setNoticeMsg('');
+                    }}
+                    className="text-zinc-400 hover:text-zinc-200"
+                  >
+                    Use a different email
+                  </button>
+                </div>
+
+                {deliveryMode === 'console' && (
+                  <p className="text-[11px] text-zinc-500 text-center">
+                    SMTP credentials are not set in <code>server/.env</code> yet; code logged to server terminal.
+                  </p>
+                )}
+              </form>
+            ) : mode === 'login' ? (
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="login-email" className="block text-xs font-medium text-zinc-300 mb-1.5">

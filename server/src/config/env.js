@@ -37,6 +37,18 @@ const envSchema = z.object({
   DOCKER_CPU_LIMIT: z.string().default('1.0'),
   DOCKER_USER: z.string().default('node'),
   SANDBOX_TIMEOUT_MS: z.coerce.number().default(120000),
+
+  // Email / SMTP Configuration (Nodemailer)
+  SMTP_HOST: z.string().default('smtp.gmail.com'),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z
+    .string()
+    .optional()
+    .default('false')
+    .transform((val) => val === 'true'),
+  SMTP_USER: z.string().optional().default(''),
+  SMTP_PASS: z.string().optional().default(''),
+  MAIL_FROM: z.string().optional().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);
