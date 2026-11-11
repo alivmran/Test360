@@ -9,7 +9,8 @@ import {
   User, 
   ShieldCheck,
   CheckCircle2,
-  Clock 
+  Clock,
+  LogOut,
 } from 'lucide-react';
 
 export const SimplifiedHeader = ({
@@ -22,6 +23,7 @@ export const SimplifiedHeader = ({
   onRerunPipeline,
   isRerunning,
   activePr,
+  onSignOut,
 }) => {
   const tabs = [
     { id: 'overview', label: 'PR Scorecard', icon: GitPullRequest },
@@ -111,32 +113,38 @@ export const SimplifiedHeader = ({
           <span className="hidden sm:inline">{isRerunning ? 'Analyzing...' : 'Run PR Check'}</span>
         </button>
 
-        {/* User Pill */}
+        {/* User Pill & Sign Out */}
         {currentUser ? (
-          <button
-            onClick={() => onSelectTab('profile')}
-            className="flex items-center space-x-2 pl-2 pr-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
-          >
-            <img
-              src={currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=18181b&color=fafafa`}
-              alt={currentUser.name}
-              className="w-5 h-5 rounded-full object-cover"
-            />
-            <span className="text-xs font-medium text-zinc-200 max-w-[100px] truncate hidden md:inline">
-              {currentUser.name}
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300 font-semibold uppercase">
-              {currentUser.role}
-            </span>
-          </button>
-        ) : (
-          <button
-            onClick={() => onSelectTab('profile')}
-            className="px-2.5 py-1 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
-          >
-            Sign In
-          </button>
-        )}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => onSelectTab('profile')}
+              className="flex items-center space-x-2 pl-2 pr-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
+            >
+              <img
+                src={currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=18181b&color=fafafa`}
+                alt={currentUser.name}
+                className="w-5 h-5 rounded-full object-cover"
+              />
+              <span className="text-xs font-medium text-zinc-200 max-w-[100px] truncate hidden md:inline">
+                {currentUser.name}
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-300 font-semibold uppercase">
+                {currentUser.role}
+              </span>
+            </button>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                title="Sign Out"
+                aria-label="Sign Out"
+                className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-rose-300 border border-zinc-800 transition-colors"
+              >
+                <LogOut size={13} />
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
     </header>
   );

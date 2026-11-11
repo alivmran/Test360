@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { env } from './config/env.js';
 import { Repository } from './modules/repositories/repository.model.js';
-import { User } from './modules/auth/user.model.js';
 import { PullRequestRun } from './modules/pull-requests/pr-run.model.js';
 import { AstCallGraph } from './modules/ast-analysis/ast.model.js';
 import { TestMatrix } from './modules/test-synthesis/test-spec.model.js';
@@ -22,42 +21,9 @@ import {
 } from '../../client/src/shared/data/mockPrRun.js';
 
 const seedDatabase = async () => {
-  console.log(`[Seed] Connecting to MongoDB at ${env.MONGO_URI}...`);
+  console.log('[Seed] Connecting to MongoDB...');
   await mongoose.connect(env.MONGO_URI);
   console.log('[Seed] Connected. Seeding collections with dynamic production telemetry...');
-
-  // 0. Seed Users
-  await User.deleteMany({});
-  await User.insertMany([
-    {
-      name: 'Developer Lead',
-      email: 'dev@test360.ai',
-      role: 'developer',
-      githubUsername: 'dev-alinasir',
-      organization: 'Test360 Engineering',
-      bio: 'Full-stack Express.js & MERN developer working on autonomous test synthesis.',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'QA Reviewer',
-      email: 'qa@test360.ai',
-      role: 'reviewer',
-      githubUsername: 'khizar-se',
-      organization: 'Test360 QA Team',
-      bio: 'Quality assurance lead tracking mutation kill scores and API regression health.',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Platform Administrator',
-      email: 'admin@test360.ai',
-      role: 'admin',
-      githubUsername: 'sys-admin',
-      organization: 'Test360 Platform',
-      bio: 'Repository admin configuring webhook secrets, permissions, and engine conventions.',
-      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80',
-    },
-  ]);
-  console.log('[Seed] Users seeded (3 role-based accounts).');
 
   // 1. Seed Repositories
   await Repository.deleteMany({});

@@ -21,7 +21,22 @@ export class AuthController {
         ...result,
       });
     } catch (err) {
-      res.status(400).json({ error: err.message });
+      const status = err.message === 'Invalid email or password' ? 401 : 400;
+      res.status(status).json({ error: err.message });
+    }
+  }
+
+  static async me(req, res) {
+    try {
+      const authHeader = req.headers.authorization || '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (!token) {
+        return res.status(401).json({ error: 'Authentication token required' });
+      }
+      const user = await AuthService.getUserFromToken(token);
+      res.status(200).json({ user });
+    } catch (err) {
+      res.status(401).json({ error: err.message });
     }
   }
 

@@ -96,7 +96,17 @@ async function runCrudVerification() {
     assert(getProfileRes.status === 200, 'Get user profile returns 200');
     assert(getProfileData.user?.name === 'Automated Test User', 'Fetched user profile matches name');
 
-    // 3.4 LOGIN USER
+    // 3.4 LOGIN USER & SESSION TOKEN VERIFICATION
+    const badLoginRes = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testEmail,
+        password: 'wrongpassword',
+      }),
+    });
+    assert(badLoginRes.status === 401, 'Invalid password rejected with 401');
+
     const loginRes = await fetch(`${baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,6 +118,16 @@ async function runCrudVerification() {
     const loginData = await loginRes.json();
     assert(loginRes.status === 200, 'Login succeeds with status 200');
     assert(loginData.token && loginData.user?.email === testEmail, 'Login returns token and user');
+
+    const meRes = await fetch(`${baseUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${loginData.token}` },
+    });
+    const meData = await meRes.json();
+    assert(meRes.status === 200, 'GET /auth/me returns 200 for valid Bearer token');
+    assert(meData.user?.email === testEmail, 'GET /auth/me resolves correct user');
+
+    const unauthMeRes = await fetch(`${baseUrl}/auth/me`);
+    assert(unauthMeRes.status === 401, 'GET /auth/me rejects missing token with 401');
 
     // 3.5 UPDATE USER (UPDATE PROFILE)
     const updateProfileRes = await fetch(`${baseUrl}/auth/profile/${createdUserId}`, {

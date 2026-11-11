@@ -34,6 +34,24 @@ export const apiClient = {
     return data;
   },
 
+  async getMe(token) {
+    const res = await fetch(`${BASE_URL}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Session invalid');
+    return data;
+  },
+
+  async deleteAccount(userId) {
+    const res = await fetch(`${BASE_URL}/auth/profile/${userId}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+    return data;
+  },
+
   async getProfile(userId) {
     const res = await fetch(`${BASE_URL}/auth/profile/${userId}`);
     if (!res.ok) throw new Error(`Failed to fetch user profile`);

@@ -19,7 +19,7 @@ const UserSchema = new Schema(
     },
     password: {
       type: String,
-      minlength: [6, 'Password must be at least 6 characters'],
+      minlength: [4, 'Password must be at least 4 characters'],
     },
     githubUsername: {
       type: String,

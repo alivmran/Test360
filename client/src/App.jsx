@@ -5,25 +5,37 @@ import { View2AstGraph } from './modules/ast-graph/View2AstGraph';
 import { View3TestSpec } from './modules/test-spec/View3TestSpec';
 import { RepositoriesView } from './modules/repositories/RepositoriesView';
 import { ProfileAuthView } from './modules/profile/ProfileAuthView';
+import { LandingPage } from './modules/landing/LandingPage';
+import { AuthPage } from './modules/auth/AuthPage';
 
 import { apiClient } from './shared/api/apiClient';
-import { 
-  mockPrScorecard, 
-  mockAstNodes, 
-  mockTestCases, 
-  mockTemplates, 
-  mockRawJsonMatrix, 
-  mockHistoricalPrRuns, 
-  mockDiffCode 
+import {
+  mockPrScorecard,
+  mockAstNodes,
+  mockTestCases,
+  mockTemplates,
+  mockRawJsonMatrix,
+  mockHistoricalPrRuns,
 } from './shared/data/mockPrRun';
+
+const AUTH_TOKEN_KEY = 'test360_auth_token';
+
+const resolveInitialPublicView = () => {
+  const path = window.location.pathname.toLowerCase();
+  if (path === '/login') return 'login';
+  if (path === '/register') return 'register';
+  return 'landing';
+};
 
 export const App = () => {
   const [currentTab, setCurrentTab] = useState('overview');
   const [selectedRepo, setSelectedRepo] = useState('szabist-se/ecommerce-express-api');
   const [isRerunning, setIsRerunning] = useState(false);
 
-  // Authenticated user session state (MERN Auth)
+  // Authenticated session state
   const [currentUser, setCurrentUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [publicView, setPublicView] = useState(resolveInitialPublicView);
 
   // Dynamic MongoDB state
   const [repositories, setRepositories] = useState([]);
@@ -34,50 +46,76 @@ export const App = () => {
   const [templates, setTemplates] = useState(mockTemplates);
   const [rawJsonMatrix, setRawJsonMatrix] = useState(mockRawJsonMatrix);
 
-  // 1. Fetch initial user session from MongoDB
-  const loadInitialUser = useCallback(async () => {
+  const navigatePublicView = useCallback((view) => {
+    setPublicView(view);
+    const targetPath = view === 'landing' ? '/' : `/${view}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Keep public view synchronized with browser Back/Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setPublicView(resolveInitialPublicView());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // 1. Restore authenticated session from stored token if present
+  const restoreSession = useCallback(async () => {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) {
+      setCurrentUser(null);
+      setIsCheckingAuth(false);
+      return;
+    }
+
     try {
-      const res = await apiClient.listUsers();
-      if (res?.users?.length > 0) {
-        setCurrentUser(res.users[0]);
+      const res = await apiClient.getMe(token);
+      if (res?.user) {
+        setCurrentUser(res.user);
+      } else {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        setCurrentUser(null);
       }
     } catch {
-      // Fallback guest user
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      setCurrentUser(null);
+    } finally {
+      setIsCheckingAuth(false);
     }
   }, []);
 
   // 2. Fetch dynamic repositories and PR data from MongoDB
   const loadData = useCallback(async () => {
+    if (!currentUser) return;
     try {
-      // Fetch Repositories
       const repoRes = await apiClient.getRepositories().catch(() => null);
       if (repoRes?.repositories?.length) {
         setRepositories(repoRes.repositories);
-        // Ensure selected repo is valid
         if (!repoRes.repositories.some((r) => r.fullName === selectedRepo)) {
           setSelectedRepo(repoRes.repositories[0].fullName);
         }
       }
 
-      // Fetch Active PR Run for selected repository
       const prRes = await apiClient.getPullRequestRun(selectedRepo).catch(() => null);
       if (prRes?.run) {
         setPrScorecard(prRes.run);
       }
 
-      // Fetch Historical PR Runs for selected repository
       const histRes = await apiClient.getHistoricalRuns(selectedRepo).catch(() => null);
       if (histRes?.historicalRuns?.length) {
         setHistoricalRuns(histRes.historicalRuns);
       }
 
-      // Fetch AST Call Graph for selected repository
       const astRes = await apiClient.getAstCallGraph(selectedRepo).catch(() => null);
       if (astRes?.nodes?.length) {
         setAstNodes(astRes.nodes);
       }
 
-      // Fetch Test Spec Matrix & Templates for selected repository
       const specRes = await apiClient.getTestSpecMatrix(selectedRepo).catch(() => null);
       if (specRes?.testCases?.length) {
         setTestCases(specRes.testCases);
@@ -91,15 +129,33 @@ export const App = () => {
     } catch (err) {
       console.warn('[Test360 AI] API fetch fallback active:', err.message);
     }
-  }, [selectedRepo]);
+  }, [currentUser, selectedRepo]);
 
   useEffect(() => {
-    loadInitialUser();
-  }, [loadInitialUser]);
+    restoreSession();
+  }, [restoreSession]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleAuthSuccess = ({ user, token }) => {
+    if (token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+    }
+    setCurrentUser(user);
+    setCurrentTab('overview');
+    if (window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/');
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    setCurrentUser(null);
+    setCurrentTab('overview');
+    navigatePublicView('landing');
+  };
 
   // Dynamic Repository CRUD Handlers
   const handleCreateRepo = async (repoData) => {
@@ -162,9 +218,32 @@ export const App = () => {
     }
   };
 
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen w-screen bg-zinc-950 text-zinc-400 flex items-center justify-center font-mono text-xs">
+        Verifying workspace session...
+      </div>
+    );
+  }
+
+  // Unauthenticated Public Flow: Landing Page or Login / Register Page
+  if (!currentUser) {
+    if (publicView === 'login' || publicView === 'register') {
+      return (
+        <AuthPage
+          initialMode={publicView}
+          onBackToLanding={() => navigatePublicView('landing')}
+          onAuthSuccess={handleAuthSuccess}
+        />
+      );
+    }
+
+    return <LandingPage onNavigateAuth={navigatePublicView} />;
+  }
+
+  // Authenticated Workspace Dashboard
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 text-zinc-50 font-sans">
-      {/* Simplified, Clean Top Navigation Header */}
       <SimplifiedHeader
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -175,9 +254,9 @@ export const App = () => {
         onRerunPipeline={handleRerunPipeline}
         isRerunning={isRerunning}
         activePr={prScorecard}
+        onSignOut={handleSignOut}
       />
 
-      {/* Main Dynamic Viewport */}
       <main className="flex-1 overflow-y-auto bg-zinc-950">
         {currentTab === 'overview' && (
           <View1Scorecard
@@ -187,9 +266,7 @@ export const App = () => {
           />
         )}
 
-        {currentTab === 'ast-graph' && (
-          <View2AstGraph nodesData={astNodes} />
-        )}
+        {currentTab === 'ast-graph' && <View2AstGraph nodesData={astNodes} />}
 
         {currentTab === 'test-spec' && (
           <View3TestSpec
@@ -213,11 +290,11 @@ export const App = () => {
           />
         )}
 
-
         {currentTab === 'profile' && (
           <ProfileAuthView
             currentUser={currentUser}
             onUserChange={setCurrentUser}
+            onSignOut={handleSignOut}
           />
         )}
       </main>
