@@ -1,17 +1,14 @@
 import React from 'react';
-import { 
-  Cpu, 
-  GitPullRequest, 
-  RotateCw, 
-  FolderGit2, 
-  Layers, 
-  Network, 
-  User, 
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
+import {
+  GitPullRequest,
+  RotateCw,
+  FolderGit2,
+  Layers,
+  Network,
+  User,
   LogOut,
 } from 'lucide-react';
+import { BrandLogo } from '../../shared/components/BrandLogo';
 
 export const SimplifiedHeader = ({
   currentTab,
@@ -38,16 +35,11 @@ export const SimplifiedHeader = ({
     <header className="h-14 border-b border-zinc-800 bg-zinc-950 px-4 sm:px-6 flex items-center justify-between shrink-0 select-none">
       {/* Left: Brand + Active Repository Dropdown */}
       <div className="flex items-center space-x-4">
-        <div 
+        <div
           onClick={() => onSelectTab('overview')}
-          className="flex items-center space-x-2.5 cursor-pointer"
+          className="cursor-pointer"
         >
-          <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950">
-            <Cpu size={17} />
-          </div>
-          <span className="font-semibold tracking-tight text-zinc-100 text-sm hidden sm:inline">
-            Test360 AI
-          </span>
+          <BrandLogo size="md" hideWordmarkOnMobile />
         </div>
 
         <div className="h-4 w-px bg-zinc-800 hidden sm:block"></div>

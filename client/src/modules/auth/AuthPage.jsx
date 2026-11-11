@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Cpu,
   ArrowLeft,
   Mail,
   Lock,
@@ -15,6 +14,7 @@ import {
   Check,
 } from 'lucide-react';
 import { apiClient } from '../../shared/api/apiClient';
+import { BrandLogo } from '../../shared/components/BrandLogo';
 
 export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess }) => {
   const [mode, setMode] = useState(initialMode);
@@ -168,14 +168,9 @@ export const AuthPage = ({ initialMode = 'login', onBackToLanding, onAuthSuccess
             <button
               type="button"
               onClick={onBackToLanding}
-              className="flex items-center space-x-2.5 text-left"
+              className="text-left"
             >
-              <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center">
-                <Cpu size={17} />
-              </div>
-              <span className="font-semibold tracking-tight text-zinc-100 text-base">
-                Test360 AI
-              </span>
+              <BrandLogo size="md" />
             </button>
 
             <button

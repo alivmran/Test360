@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="t360-bg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#181820" />
+      <stop offset="100%" stop-color="#09090B" />
+    </linearGradient>
+    <linearGradient id="t360-border" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#434357" />
+      <stop offset="100%" stop-color="#27272A" />
+    </linearGradient>
+    <linearGradient id="t360-arc" x1="6.4" y1="6.4" x2="25.4" y2="25.4" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5B4FC" />
+      <stop offset="55%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+  </defs>
+
+  <!-- Container badge -->
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#t360-bg)" stroke="url(#t360-border)" stroke-width="1.2" />
+
+  <!-- 294-degree orbital verification arc (r=9.6 around 16,16) -->
+  <path
+    d="M 25.39 14.00 A 9.6 9.6 0 1 1 18.00 6.61"
+    stroke="url(#t360-arc)"
+    stroke-width="2.75"
+    stroke-linecap="round"
+  />
+
+  <!-- Verification check breaking cleanly toward the upper-right opening -->
+  <path
+    d="M 11.4 16.4 L 14.6 19.6 L 20.5 12.1"
+    stroke="#FAFAFA"
+    stroke-width="2.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Completion pass node completing the 360 orbital loop -->
+  <circle cx="22.8" cy="9.2" r="2.0" fill="#34D399" />
+</svg>

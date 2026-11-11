@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Cpu,
   ArrowRight,
   Layers,
   ShieldCheck,
@@ -11,6 +10,7 @@ import {
   Network,
   TrendingUp,
 } from 'lucide-react';
+import { BrandLogo } from '../../shared/components/BrandLogo';
 
 const HERO_VIEWS = [
   {
@@ -90,14 +90,7 @@ export const LandingPage = ({ onNavigateAuth }) => {
       {/* Top Navigation */}
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center">
-              <Cpu size={17} />
-            </div>
-            <span className="font-semibold tracking-tight text-zinc-100 text-sm sm:text-base">
-              Test360 AI
-            </span>
-          </div>
+          <BrandLogo size="md" />
 
           <nav className="hidden md:flex items-center space-x-8 text-sm text-zinc-400">
             <button
@@ -508,10 +501,7 @@ export const LandingPage = ({ onNavigateAuth }) => {
       {/* Footer */}
       <footer className="border-t border-zinc-900 py-8 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
-          <div className="flex items-center space-x-2">
-            <Cpu size={14} className="text-indigo-400" />
-            <span className="font-medium text-zinc-300">Test360 AI</span>
-          </div>
+          <BrandLogo size="sm" />
           <div className="flex items-center space-x-6">
             <button
               type="button"

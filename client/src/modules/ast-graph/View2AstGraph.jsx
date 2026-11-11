@@ -139,59 +139,59 @@ export const View2AstGraph = ({ nodesData = [] }) => {
       {/* Top Filter & Legend Bar */}
       <div className="h-12 border-b border-zinc-800 bg-zinc-950 px-4 flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center space-x-3 text-xs font-mono">
-          <span className="text-zinc-500 uppercase tracking-wider flex items-center space-x-1.5">
-            <Network size={13} strokeWidth={1.5} className="text-zinc-400" />
-            <span>AST Call Graph</span>
+          <span className="text-zinc-400 font-sans font-medium flex items-center space-x-1.5">
+            <Network size={14} strokeWidth={1.75} className="text-zinc-400" />
+            <span>Code Map</span>
           </span>
           <span className="text-zinc-700">|</span>
           <div className="flex items-center space-x-1">
             <button
               onClick={() => setFilterCategory('ALL')}
-              className={`px-2 py-0.5 rounded text-[11px] transition-colors ${
+              className={`px-2.5 py-1 rounded text-[11px] font-sans transition-colors ${
                 filterCategory === 'ALL'
                   ? 'bg-zinc-800 text-zinc-100 font-semibold'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              All Nodes ({nodesData?.length || 0})
+              All ({nodesData?.length || 0})
             </button>
             <button
               onClick={() => setFilterCategory('MODIFIED')}
-              className={`px-2 py-0.5 rounded text-[11px] flex items-center space-x-1 transition-colors ${
+              className={`px-2.5 py-1 rounded text-[11px] font-sans flex items-center space-x-1.5 transition-colors ${
                 filterCategory === 'MODIFIED'
                   ? 'bg-semantic-rose/20 text-semantic-rose font-semibold border border-semantic-rose/30'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-semantic-rose"></span>
-              <span>Modified ({modifiedCount})</span>
+              <span>Changed ({modifiedCount})</span>
             </button>
             <button
               onClick={() => setFilterCategory('BLAST')}
-              className={`px-2 py-0.5 rounded text-[11px] flex items-center space-x-1 transition-colors ${
+              className={`px-2.5 py-1 rounded text-[11px] font-sans flex items-center space-x-1.5 transition-colors ${
                 filterCategory === 'BLAST'
                   ? 'bg-semantic-amber/20 text-semantic-amber font-semibold border border-semantic-amber/30'
-                  : 'text-zinc-500 hover:text-zinc-300'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-semantic-amber"></span>
-              <span>In Blast Radius ({blastCount})</span>
+              <span>Affected ({blastCount})</span>
             </button>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="hidden lg:flex items-center space-x-4 text-[10px] font-mono text-zinc-500">
-          <span className="text-zinc-400">Layer Flow:</span>
-          <span>1. routes/</span>
+        <div className="hidden lg:flex items-center space-x-2 text-[11px] text-zinc-500">
+          <span className="text-zinc-400 font-medium">Flow:</span>
+          <span>Routes</span>
           <span>&rarr;</span>
-          <span>2. middlewares/</span>
+          <span>Middleware</span>
           <span>&rarr;</span>
-          <span>3. controllers/</span>
+          <span>Controllers</span>
           <span>&rarr;</span>
-          <span>4. services/</span>
+          <span>Services</span>
           <span>&rarr;</span>
-          <span>5. models/</span>
+          <span>Models</span>
         </div>
       </div>
 
@@ -213,10 +213,10 @@ export const View2AstGraph = ({ nodesData = [] }) => {
             <Controls showInteractive={false} position="bottom-left" />
           </ReactFlow>
 
-          <div className="absolute top-3 left-3 bg-zinc-900/90 border border-zinc-800 p-2.5 rounded text-[11px] font-mono text-zinc-400 max-w-xs pointer-events-none select-none">
-            <p className="font-semibold text-zinc-200 mb-1">AST Blast-Radius Propagation</p>
-            <p className="text-[10px] text-zinc-500 leading-normal">
-              Nodes traversed using <code className="text-zinc-400">@babel/parser</code> &amp; <code className="text-zinc-400">@babel/traverse</code> across Express Router registrations and Mongoose models stored in MongoDB.
+          <div className="absolute top-3 left-3 bg-zinc-900/90 border border-zinc-800 p-3 rounded-lg text-xs text-zinc-400 max-w-xs pointer-events-none select-none">
+            <p className="font-semibold text-zinc-200 mb-1">How Changes Flow</p>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Click any file to view its API endpoints, database fields, and connected files.
             </p>
           </div>
         </div>

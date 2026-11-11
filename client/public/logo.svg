@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 156 44" fill="none">
+  <defs>
+    <linearGradient id="logo-bg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#181820" />
+      <stop offset="100%" stop-color="#09090B" />
+    </linearGradient>
+    <linearGradient id="logo-border" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#434357" />
+      <stop offset="100%" stop-color="#27272A" />
+    </linearGradient>
+    <linearGradient id="logo-arc" x1="6.4" y1="6.4" x2="25.4" y2="25.4" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5B4FC" />
+      <stop offset="55%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+    <linearGradient id="logo-360" x1="96" y1="12" x2="148" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#A5B4FC" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Brand Emblem (36x36 centered vertically) -->
+  <g transform="translate(2, 4) scale(1.125)">
+    <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#logo-bg)" stroke="url(#logo-border)" stroke-width="1.2" />
+    <path
+      d="M 25.39 14.00 A 9.6 9.6 0 1 1 18.00 6.61"
+      stroke="url(#logo-arc)"
+      stroke-width="2.75"
+      stroke-linecap="round"
+    />
+    <path
+      d="M 11.4 16.4 L 14.6 19.6 L 20.5 12.1"
+      stroke="#FAFAFA"
+      stroke-width="2.75"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <circle cx="22.8" cy="9.2" r="2.0" fill="#34D399" />
+  </g>
+
+  <!-- Professionally formatted "Test360" wordmark -->
+  <text
+    id="wordmark"
+    x="48"
+    y="30.5"
+    font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    font-size="25"
+    font-weight="700"
+    letter-spacing="-0.85"
+    fill="#FAFAFA"
+  >Test<tspan font-weight="600" letter-spacing="-0.65" fill="url(#logo-360)">360</tspan></text>
+
+  <!-- Precision degree / orbit marker positioned cleanly at top-right shoulder -->
+  <circle id="degree-mark" cx="148.1" cy="13.8" r="2.45" stroke="#34D399" stroke-width="1.6" />
+</svg>
