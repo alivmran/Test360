@@ -85,31 +85,6 @@ Test360-AI/
 
 ---
 
-## Testing & Verification
-
-Run the backend integration test suite to verify MongoDB connectivity, authentication, user CRUD, repository CRUD (including cascade cleanup), and test matrix validation:
-
-```bash
-npm --workspace=server test
-```
-
-Build the frontend production bundle:
-
-```bash
-npm run build:client
-```
-
----
-
-## Roadmap
-
-- Live Docker container runner orchestration with ephemeral volume mounting and stream capture
-- Automated multi-iteration self-healing loop on container test failures
-- Live AST mutation testing runner and automated Autocannon load profiling
-- Direct GitHub App webhook delivery and automated PR repair commits
-
----
-
 ## License
 
 Licensed under the MIT License.
