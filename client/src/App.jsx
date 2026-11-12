@@ -44,6 +44,7 @@ export const App = () => {
   const [prScorecard, setPrScorecard] = useState(mockPrScorecard);
   const [historicalRuns, setHistoricalRuns] = useState(mockHistoricalPrRuns);
   const [astNodes, setAstNodes] = useState(mockAstNodes);
+  const [astEdges, setAstEdges] = useState([]);
   const [testCases, setTestCases] = useState(mockTestCases);
   const [templates, setTemplates] = useState(mockTemplates);
   const [rawJsonMatrix, setRawJsonMatrix] = useState(mockRawJsonMatrix);
@@ -118,6 +119,9 @@ export const App = () => {
       const astRes = await apiClient.getAstCallGraph(selectedRepo).catch(() => null);
       if (astRes?.nodes?.length) {
         setAstNodes(astRes.nodes);
+      }
+      if (astRes?.edges?.length) {
+        setAstEdges(astRes.edges);
       }
 
       const specRes = await apiClient
@@ -199,8 +203,8 @@ export const App = () => {
     return res;
   };
 
-  const handleScanRepo = async (owner, repo) => {
-    const res = await apiClient.scanRepository(owner, repo);
+  const handleScanRepo = async (owner, repo, localPath = null) => {
+    const res = await apiClient.scanRepository(owner, repo, localPath);
     await loadData();
     return res;
   };
@@ -279,7 +283,7 @@ export const App = () => {
         onSignOut={handleSignOut}
       />
 
-      <main className="flex-1 overflow-y-auto bg-zinc-950">
+      <main className={`flex-1 ${currentTab === 'ast-graph' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'} bg-zinc-950`}>
         {currentTab === 'overview' && (
           <View1Scorecard
             scorecard={prScorecard}
@@ -292,7 +296,9 @@ export const App = () => {
           />
         )}
 
-        {currentTab === 'ast-graph' && <View2AstGraph nodesData={astNodes} />}
+        {currentTab === 'ast-graph' && (
+          <View2AstGraph nodesData={astNodes} edgesData={astEdges} />
+        )}
 
         {currentTab === 'test-spec' && (
           <View3TestSpec

@@ -1,4 +1,5 @@
 import http from 'http';
+import path from 'path';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { createApp } from './src/app.js';
@@ -354,6 +355,129 @@ async function runCrudVerification() {
     const validateData = await validateRes.json();
     assert(validateRes.status === 200, 'Validate test matrix returns 200');
     assert(validateData.status === 'valid', 'Test matrix validation succeeds');
+
+    console.log('\n====================================================');
+    console.log(' [6] TESTING LIVE GITHUB WEBHOOK CONNECTION');
+    console.log('====================================================');
+    // Create a temporary repository with a known webhook secret
+    const webhookRepoName = `test-wh/repo-${Date.now()}`;
+    const testSecret = 'whsec_test_secret_key_12345';
+    await Repository.create({
+      fullName: webhookRepoName,
+      owner: 'test-wh',
+      repoName: webhookRepoName.split('/')[1],
+      webhookSecret: testSecret,
+      installationId: 'inst_9988',
+    });
+
+    // 6.1 Reject forged signature
+    const forgedPayload = JSON.stringify({ repository: { full_name: webhookRepoName }, zen: 'test' });
+    const forgedRes = await fetch(`${baseUrl}/ingestion/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hub-signature-256': 'sha256=0000000000000000000000000000000000000000000000000000000000000000',
+        'x-github-event': 'ping',
+      },
+      body: forgedPayload,
+    });
+    assert(forgedRes.status === 401, 'Forged webhook signature rejected with 401');
+
+    // 6.2 Accept valid GitHub ping event with real HMAC
+    const validHmac = crypto.createHmac('sha256', testSecret).update(Buffer.from(forgedPayload)).digest('hex');
+    const validPingRes = await fetch(`${baseUrl}/ingestion/webhook`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-hub-signature-256': `sha256=${validHmac}`,
+        'x-github-event': 'ping',
+      },
+      body: forgedPayload,
+    });
+    const validPingData = await validPingRes.json();
+    assert(validPingRes.status === 200, 'Valid GitHub ping event returns 200 OK');
+    assert(validPingData.status === 'pong', 'GitHub ping returns status pong');
+    assert(validPingData.slaSatisfied === true, 'GitHub ping ACK latency satisfied <100ms SLA');
+
+    // 6.3 Test Delivery API endpoint
+    const testDeliveryRes = await fetch(`${baseUrl}/ingestion/test-delivery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoFullName: webhookRepoName, event: 'ping' }),
+    });
+    const testDeliveryData = await testDeliveryRes.json();
+    assert(testDeliveryRes.status === 200, 'Test delivery endpoint returns 200');
+    assert(testDeliveryData.signatureVerified === true, 'Test delivery verified HMAC signature');
+    assert(testDeliveryData.slaMet === true, 'Test delivery met <100ms SLA');
+
+    // Clean up temporary webhook repo
+    await Repository.deleteOne({ fullName: webhookRepoName });
+
+    console.log('\n====================================================');
+    console.log(' [7] TESTING LIVE DISK SCANNING FOR AST ENGINE');
+    console.log('====================================================');
+    // 7.1 Register repo pointing to sample-express-api fixture on disk
+    const fixturePath = path.resolve(process.cwd(), 'test-fixtures', 'sample-express-api');
+    const diskRepoName = `disk-test/sample-express-api-${Date.now()}`;
+    const [diskOwner, diskBase] = diskRepoName.split('/');
+
+    const createDiskRepoRes = await fetch(`${baseUrl}/repositories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullName: diskRepoName,
+        gitUrl: `https://github.com/${diskRepoName}`,
+        localPath: fixturePath,
+        conventions: {
+          routesDir: 'src/routes',
+          controllersDir: 'src/controllers',
+          servicesDir: 'src/services',
+          modelsDir: 'src/models',
+        },
+      }),
+    });
+    assert(createDiskRepoRes.status === 201, 'Create disk repo returns 201');
+
+    // 7.2 Trigger Live Disk Scan
+    const scanDiskRes = await fetch(`${baseUrl}/repositories/${diskOwner}/${diskBase}/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localPath: fixturePath }),
+    });
+    const scanDiskData = await scanDiskRes.json();
+    assert(scanDiskRes.status === 200, 'Live disk scan returns 200');
+    assert(scanDiskData.scannedOnDisk === true, 'Scan confirmed executed on disk');
+    assert(scanDiskData.nodesCount === 6, 'Parsed 6 source files into AST nodes');
+    assert(scanDiskData.edgesCount >= 4, 'Generated directed dependency call edges between layers');
+
+    // 7.3 Verify extracted routes from real file
+    const routesDiscovered = scanDiskData.detectedRoutes || [];
+    assert(routesDiscovered.includes('POST /api/orders'), 'Extracted real POST /api/orders route');
+    assert(routesDiscovered.includes('GET /api/orders/:id'), 'Extracted real GET /api/orders/:id route');
+    assert(routesDiscovered.includes('PUT /api/orders/:id/status'), 'Extracted real PUT /api/orders/:id/status route');
+    assert(routesDiscovered.includes('DELETE /api/orders/:id'), 'Extracted real DELETE /api/orders/:id route');
+
+    // 7.4 Verify AstCallGraph stored in MongoDB
+    const storedGraph = await AstCallGraph.findOne({ repository: diskRepoName });
+    assert(storedGraph !== null, 'AstCallGraph saved in MongoDB for disk repo');
+    assert(storedGraph.nodes.length === 6, 'MongoDB AST nodes count matches 6 files');
+
+    // Check Mongoose schemas extracted in models nodes
+    const orderModelNode = storedGraph.nodes.find((n) => n.id === 'models-Order');
+    assert(orderModelNode !== null, 'Order model node extracted');
+    const orderFields = (orderModelNode?.mongooseFields || []).map((f) => f.name);
+    assert(orderFields.includes('orderNumber'), 'Extracted Mongoose field orderNumber');
+    assert(orderFields.includes('customerEmail'), 'Extracted Mongoose field customerEmail');
+
+    // Check process.env keys extracted
+    const allEnvKeys = storedGraph.summary?.envKeysSynthesized || [];
+    assert(
+      allEnvKeys.includes('JWT_SECRET') || allEnvKeys.includes('ORDER_TIMEOUT_MS'),
+      'Extracted process.env keys via AST visitor'
+    );
+
+    // Clean up disk repo
+    await fetch(`${baseUrl}/repositories/${diskOwner}/${diskBase}`, { method: 'DELETE' });
 
     console.log('\n====================================================');
     console.log(` VERIFICATION SUMMARY: ${testPassed} PASSED, ${testFailed} FAILED`);

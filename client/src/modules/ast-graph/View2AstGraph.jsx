@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   ReactFlow, 
   Background, 
@@ -14,9 +14,18 @@ const nodeTypes = {
   astNode: AstCustomNode,
 };
 
-export const View2AstGraph = ({ nodesData = [] }) => {
-  const [selectedNodeId, setSelectedNodeId] = useState('controllers-checkoutController');
+export const View2AstGraph = ({ nodesData = [], edgesData = [] }) => {
+  const [selectedNodeId, setSelectedNodeId] = useState(nodesData?.[0]?.id || 'controllers-checkoutController');
   const [filterCategory, setFilterCategory] = useState('ALL');
+
+  useEffect(() => {
+    if (nodesData && nodesData.length > 0) {
+      const exists = nodesData.some((n) => n.id === selectedNodeId);
+      if (!exists) {
+        setSelectedNodeId(nodesData[0].id);
+      }
+    }
+  }, [nodesData, selectedNodeId]);
 
   const selectedNode = useMemo(() => {
     return (nodesData || []).find((n) => n.id === selectedNodeId) || nodesData?.[0] || null;
@@ -72,6 +81,17 @@ export const View2AstGraph = ({ nodesData = [] }) => {
 
   // Directed Dependency Call Edges
   const initialEdges = useMemo(() => {
+    if (edgesData && edgesData.length > 0) {
+      return edgesData.map((e, idx) => ({
+        id: e.id || `edge-${idx}`,
+        source: e.source,
+        target: e.target,
+        animated: e.animated ?? true,
+        style: e.style || { stroke: '#F59E0B', strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: e.style?.stroke || '#F59E0B' },
+      }));
+    }
+
     return [
       {
         id: 'e1',
@@ -128,7 +148,7 @@ export const View2AstGraph = ({ nodesData = [] }) => {
         markerEnd: { type: MarkerType.ArrowClosed, color: '#3F3F46' },
       },
     ];
-  }, []);
+  }, [edgesData]);
 
   const onNodeClick = useCallback((_event, node) => {
     setSelectedNodeId(node.id);
@@ -196,8 +216,8 @@ export const View2AstGraph = ({ nodesData = [] }) => {
       </div>
 
       {/* Main Workspace: Graph Canvas + AST Node Inspector Drawer */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 relative bg-zinc-950">
+      <div className="flex-1 flex overflow-hidden min-h-0 h-full">
+        <div className="flex-1 relative bg-zinc-950 h-full w-full">
           <ReactFlow
             nodes={initialNodes}
             edges={initialEdges}

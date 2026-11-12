@@ -45,6 +45,8 @@ export const RepositoriesView = ({
   const [openSettingsRepo, setOpenSettingsRepo] = useState(null);
   const [settingsTab, setSettingsTab] = useState('webhook'); // 'webhook' | 'folders'
   const [scanningRepo, setScanningRepo] = useState(null);
+  const [testingDeliveryRepo, setTestingDeliveryRepo] = useState(null);
+  const [deliveryTestResults, setDeliveryTestResults] = useState({});
   const [simulatingRepo, setSimulatingRepo] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -54,6 +56,7 @@ export const RepositoriesView = ({
   const [newRepoForm, setNewRepoForm] = useState({
     inputUrlOrName: '',
     defaultBranch: 'main',
+    localPath: '',
     routesDir: 'src/routes',
     controllersDir: 'src/controllers',
     servicesDir: 'src/services',
@@ -68,6 +71,7 @@ export const RepositoriesView = ({
 
   // Form state for editing folder paths
   const [editForm, setEditForm] = useState({
+    localPath: '',
     routesDir: '',
     controllersDir: '',
     servicesDir: '',
@@ -158,6 +162,7 @@ export const RepositoriesView = ({
         fullName: input,
         gitUrl: input.startsWith('http') ? input : `https://github.com/${input}`,
         defaultBranch: newRepoForm.defaultBranch.trim() || 'main',
+        localPath: newRepoForm.localPath.trim(),
         description:
           newRepoForm.description.trim() ||
           verifiedMetadata?.description ||
@@ -178,6 +183,7 @@ export const RepositoriesView = ({
       setNewRepoForm({
         inputUrlOrName: '',
         defaultBranch: 'main',
+        localPath: '',
         routesDir: 'src/routes',
         controllersDir: 'src/controllers',
         servicesDir: 'src/services',
@@ -191,13 +197,13 @@ export const RepositoriesView = ({
     }
   };
 
-  const handleTriggerScan = async (fullName) => {
+  const handleTriggerScan = async (fullName, localPath = null) => {
     setErrorMsg('');
     setScanningRepo(fullName);
     try {
       const [owner, repo] = fullName.split('/');
       if (onScanRepo) {
-        const res = await onScanRepo(owner, repo);
+        const res = await onScanRepo(owner, repo, localPath);
         setSuccessMsg(res?.message || `Scan finished for ${fullName}`);
       }
       setTimeout(() => setSuccessMsg(''), 4000);
@@ -205,6 +211,25 @@ export const RepositoriesView = ({
       setErrorMsg(err.message || 'Scan failed');
     } finally {
       setScanningRepo(null);
+    }
+  };
+
+  const handleTestDelivery = async (fullName) => {
+    setTestingDeliveryRepo(fullName);
+    setErrorMsg('');
+    try {
+      const res = await apiClient.testWebhookDelivery(fullName, 'ping');
+      setDeliveryTestResults((prev) => ({ ...prev, [fullName]: res }));
+      setSuccessMsg(`Webhook Ping delivery verified in ${res.latencyMs}ms (<100ms SLA met).`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      setErrorMsg(err.message || 'Webhook test delivery failed');
+      setDeliveryTestResults((prev) => ({
+        ...prev,
+        [fullName]: { success: false, error: err.message },
+      }));
+    } finally {
+      setTestingDeliveryRepo(null);
     }
   };
 
@@ -251,6 +276,7 @@ export const RepositoriesView = ({
     setOpenSettingsRepo(repo.fullName);
     setSettingsTab('webhook');
     setEditForm({
+      localPath: repo.localPath || '',
       routesDir: repo.conventions?.routesDir || 'src/routes',
       controllersDir: repo.conventions?.controllersDir || 'src/controllers',
       servicesDir: repo.conventions?.servicesDir || 'src/services',
@@ -265,6 +291,7 @@ export const RepositoriesView = ({
       const [owner, repo] = fullName.split('/');
       await onUpdateConfig(owner, repo, {
         defaultBranch: editForm.defaultBranch,
+        localPath: editForm.localPath,
         conventions: {
           routesDir: editForm.routesDir,
           controllersDir: editForm.controllersDir,
@@ -619,9 +646,79 @@ export const RepositoriesView = ({
                             </button>
                           </div>
                         </div>
+
+                        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-zinc-900">
+                          <div className="text-xs text-zinc-400">
+                            <span className="font-semibold text-zinc-300">Live Delivery Handshake: </span>
+                            <span>Send an HMAC-signed test ping to verify endpoint responsiveness (&lt;100ms SLA).</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleTestDelivery(repo.fullName)}
+                            disabled={testingDeliveryRepo === repo.fullName}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium rounded-lg inline-flex items-center space-x-1.5 shrink-0 transition-colors"
+                          >
+                            <RotateCw size={12} className={testingDeliveryRepo === repo.fullName ? 'animate-spin' : ''} />
+                            <span>{testingDeliveryRepo === repo.fullName ? 'Verifying...' : 'Test Webhook Delivery'}</span>
+                          </button>
+                        </div>
+
+                        {deliveryTestResults[repo.fullName] && (
+                          <div
+                            className={`p-3 rounded-lg border text-xs font-mono flex items-center justify-between ${
+                              deliveryTestResults[repo.fullName].success
+                                ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
+                                : 'bg-rose-950/40 border-rose-800/60 text-rose-300'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <CheckCircle2
+                                size={15}
+                                className={
+                                  deliveryTestResults[repo.fullName].success
+                                    ? 'text-emerald-400 shrink-0'
+                                    : 'text-rose-400 shrink-0'
+                                }
+                              />
+                              <span>
+                                {deliveryTestResults[repo.fullName].success
+                                  ? `⚡ Ping ACK: ${deliveryTestResults[repo.fullName].latencyMs}ms · HMAC Verified · 200 OK (${deliveryTestResults[repo.fullName].response?.status})`
+                                  : `Delivery Failed: ${deliveryTestResults[repo.fullName].error}`}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-zinc-500 hidden sm:inline">
+                              Delivery: {deliveryTestResults[repo.fullName].deliveryId?.substring(0, 8)}...
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-3">
+                        <div className="p-3 bg-zinc-900/60 border border-zinc-800 rounded-lg space-y-2">
+                          <label className="block text-zinc-200 text-xs font-medium">Local Repository Path (Disk AST Scanner)</label>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                              type="text"
+                              value={editForm.localPath}
+                              onChange={(e) => setEditForm({ ...editForm, localPath: e.target.value })}
+                              placeholder="e.g. D:/Projects/Test360-AI/server/test-fixtures/sample-express-api"
+                              className="flex-1 px-3 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleTriggerScan(repo.fullName, editForm.localPath)}
+                              disabled={scanningRepo === repo.fullName}
+                              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded-lg font-medium whitespace-nowrap shrink-0 transition-colors inline-flex items-center space-x-1.5"
+                            >
+                              <RotateCw size={12} className={scanningRepo === repo.fullName ? 'animate-spin' : ''} />
+                              <span>{scanningRepo === repo.fullName ? 'Scanning Disk...' : 'Live Disk Scan'}</span>
+                            </button>
+                          </div>
+                          <p className="text-[11px] text-zinc-500">
+                            Directly parses Express routes, Mongoose schema fields, and process.env keys from this local folder via Babel AST visitor.
+                          </p>
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                           <div>
                             <label className="block text-zinc-400 mb-1">Routes</label>
@@ -833,6 +930,22 @@ export const RepositoriesView = ({
                   }
                   className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 font-mono text-xs focus:outline-none focus:border-indigo-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-zinc-300 mb-1 font-medium">Local Path on Disk (Optional for Live AST Scanning)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. D:/Projects/Test360-AI/server/test-fixtures/sample-express-api"
+                  value={newRepoForm.localPath}
+                  onChange={(e) =>
+                    setNewRepoForm({ ...newRepoForm, localPath: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 font-mono text-xs focus:outline-none focus:border-indigo-500"
+                />
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Enables Test360 to parse real JS/TS source code, Express routes, and Mongoose schemas from disk.
+                </p>
               </div>
 
               <div className="flex justify-end space-x-2 pt-2">

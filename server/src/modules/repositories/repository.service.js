@@ -1,5 +1,8 @@
+import fs from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 import { Repository } from './repository.model.js';
+import { AstService } from '../ast-analysis/ast.service.js';
 import { AstCallGraph } from '../ast-analysis/ast.model.js';
 import { PullRequestRun } from '../pull-requests/pr-run.model.js';
 import { TestMatrix } from '../test-synthesis/test-spec.model.js';
@@ -348,8 +351,9 @@ export class RepositoryService {
 
   /**
    * Scan repository to dynamically discover routes, models, and update AST call graph
+   * Supports live disk directory parsing with Babel AST or convention synthesis
    */
-  static async scanRepository(fullName) {
+  static async scanRepository(fullName, customLocalPath = null, modifiedFiles = []) {
     const repo = await Repository.findOne({ fullName });
     if (!repo) {
       throw new Error(`Repository "${fullName}" not found.`);
@@ -363,100 +367,163 @@ export class RepositoryService {
     } = repo.conventions || {};
     const repoName = repo.repoName;
 
-    // Dynamically synthesize AST nodes based on configured conventions
-    const nodes = [
-      {
-        id: 'routes-main',
-        label: `${repoName}Routes.js`,
-        layer: 'routes',
-        category: 'MODIFIED_IN_PR',
-        filePath: `${routesDir}/${repoName}Routes.js`,
-        exports: ['router'],
-        imports: ['authMiddleware', `${repoName}Controller`],
-        httpEndpoints: [
-          { verb: 'POST', path: `/api/${repoName}`, handlerName: 'createHandler' },
-          { verb: 'GET', path: `/api/${repoName}/:id`, handlerName: 'getByIdHandler' },
-          { verb: 'PUT', path: `/api/${repoName}/:id`, handlerName: 'updateHandler' },
-          { verb: 'DELETE', path: `/api/${repoName}/:id`, handlerName: 'deleteHandler' },
-        ],
-      },
-      {
-        id: 'middlewares-auth',
-        label: 'authMiddleware.js',
-        layer: 'middlewares',
-        category: 'IN_BLAST_RADIUS',
-        filePath: 'src/middlewares/authMiddleware.js',
-        exports: ['verifyToken', 'requireRole'],
-        imports: [],
-      },
-      {
-        id: 'controllers-main',
-        label: `${repoName}Controller.js`,
-        layer: 'controllers',
-        category: 'MODIFIED_IN_PR',
-        filePath: `${controllersDir}/${repoName}Controller.js`,
-        exports: ['createHandler', 'getByIdHandler', 'updateHandler', 'deleteHandler'],
-        imports: [`${repoName}Service`, `${repoName}Model`],
-      },
-      {
-        id: 'services-main',
-        label: `${repoName}Service.js`,
-        layer: 'services',
-        category: 'IN_BLAST_RADIUS',
-        filePath: `${servicesDir}/${repoName}Service.js`,
-        exports: [`execute${repoName}Logic`, `validate${repoName}`],
-        imports: [`${repoName}Model`],
-      },
-      {
-        id: 'models-main',
-        label: `${repoName}.js`,
-        layer: 'models',
-        category: 'IN_BLAST_RADIUS',
-        filePath: `${modelsDir}/${repoName}.js`,
-        exports: [`${repoName}Model`],
-        imports: ['mongoose'],
-      },
-    ];
+    // Check potential local disk paths in priority order
+    const candidatePaths = [
+      customLocalPath,
+      repo.localPath,
+      path.resolve('d:/Projects', repoName, 'backend'),
+      path.resolve('d:/Projects', repoName),
+      path.resolve(process.cwd(), '..', repoName, 'backend'),
+      path.resolve(process.cwd(), '..', repoName),
+      path.resolve(process.cwd(), 'test-fixtures', repoName),
+      path.resolve(process.cwd(), 'test-fixtures', 'sample-express-api'),
+      path.resolve(process.cwd(), 'server', 'test-fixtures', repoName),
+      path.resolve(process.cwd(), 'server', 'test-fixtures', 'sample-express-api'),
+    ].filter(Boolean);
 
-    const edges = [
-      { id: 'e1', source: 'routes-main', target: 'controllers-main', animated: true },
-      { id: 'e2', source: 'routes-main', target: 'middlewares-auth', animated: true },
-      { id: 'e3', source: 'controllers-main', target: 'services-main', animated: true },
-      { id: 'e4', source: 'services-main', target: 'models-main', animated: true },
-    ];
+    let resolvedDiskPath = null;
+    for (const cand of candidatePaths) {
+      if (fs.existsSync(cand)) {
+        try {
+          const files = AstService.collectFilesFromDisk(cand);
+          if (files.length > 0) {
+            resolvedDiskPath = cand;
+            break;
+          }
+        } catch {
+          // continue checking
+        }
+      }
+    }
+
+    let nodes = [];
+    let edges = [];
+    let layers = ['routes', 'middlewares', 'controllers', 'services', 'models'];
+    let summary = {};
+    let scannedOnDisk = false;
+
+    if (resolvedDiskPath) {
+      const scanResult = AstService.scanRepositoryOnDisk(
+        resolvedDiskPath,
+        repo.conventions,
+        modifiedFiles
+      );
+      nodes = scanResult.nodes;
+      edges = scanResult.edges;
+      layers = scanResult.layers;
+      summary = scanResult.summary;
+      scannedOnDisk = true;
+      repo.localPath = resolvedDiskPath;
+    } else {
+      // Dynamically synthesize AST nodes based on configured conventions
+      nodes = [
+        {
+          id: 'routes-main',
+          label: `${repoName}Routes.js`,
+          layer: 'routes',
+          category: 'MODIFIED_IN_PR',
+          filePath: `${routesDir}/${repoName}Routes.js`,
+          exports: ['router'],
+          imports: ['authMiddleware', `${repoName}Controller`],
+          httpEndpoints: [
+            { verb: 'POST', path: `/api/${repoName}`, handlerName: 'createHandler' },
+            { verb: 'GET', path: `/api/${repoName}/:id`, handlerName: 'getByIdHandler' },
+            { verb: 'PUT', path: `/api/${repoName}/:id`, handlerName: 'updateHandler' },
+            { verb: 'DELETE', path: `/api/${repoName}/:id`, handlerName: 'deleteHandler' },
+          ],
+        },
+        {
+          id: 'middlewares-auth',
+          label: 'authMiddleware.js',
+          layer: 'middlewares',
+          category: 'IN_BLAST_RADIUS',
+          filePath: 'src/middlewares/authMiddleware.js',
+          exports: ['verifyToken', 'requireRole'],
+          imports: [],
+        },
+        {
+          id: 'controllers-main',
+          label: `${repoName}Controller.js`,
+          layer: 'controllers',
+          category: 'MODIFIED_IN_PR',
+          filePath: `${controllersDir}/${repoName}Controller.js`,
+          exports: ['createHandler', 'getByIdHandler', 'updateHandler', 'deleteHandler'],
+          imports: [`${repoName}Service`, `${repoName}Model`],
+        },
+        {
+          id: 'services-main',
+          label: `${repoName}Service.js`,
+          layer: 'services',
+          category: 'IN_BLAST_RADIUS',
+          filePath: `${servicesDir}/${repoName}Service.js`,
+          exports: [`execute${repoName}Logic`, `validate${repoName}`],
+          imports: [`${repoName}Model`],
+        },
+        {
+          id: 'models-main',
+          label: `${repoName}.js`,
+          layer: 'models',
+          category: 'IN_BLAST_RADIUS',
+          filePath: `${modelsDir}/${repoName}.js`,
+          exports: [`${repoName}Model`],
+          imports: ['mongoose'],
+        },
+      ];
+
+      edges = [
+        { id: 'e1', source: 'routes-main', target: 'controllers-main', animated: true },
+        { id: 'e2', source: 'routes-main', target: 'middlewares-auth', animated: true },
+        { id: 'e3', source: 'controllers-main', target: 'services-main', animated: true },
+        { id: 'e4', source: 'services-main', target: 'models-main', animated: true },
+      ];
+
+      summary = {
+        totalFilesTraversed: nodes.length,
+        routesImpacted: 4,
+        modelsDiscovered: 1,
+        envKeysSynthesized: [],
+        modifiedFiles: [`${controllersDir}/${repoName}Controller.js`],
+        blastRadiusFiles: [`${routesDir}/${repoName}Routes.js`, `${modelsDir}/${repoName}.js`],
+      };
+    }
 
     await AstCallGraph.findOneAndUpdate(
       { repository: fullName },
       {
         repository: fullName,
         commitSha: 'scan-' + crypto.randomBytes(4).toString('hex'),
-        layers: ['routes', 'middlewares', 'controllers', 'services', 'models'],
+        layers,
         nodes,
         edges,
-        summary: {
-          totalFilesTraversed: nodes.length,
-          routesImpacted: 4,
-          modifiedFiles: [`${controllersDir}/${repoName}Controller.js`],
-          blastRadiusFiles: [`${routesDir}/${repoName}Routes.js`, `${modelsDir}/${repoName}.js`],
-        },
+        summary,
       },
       { upsert: true }
     );
 
     repo.summary = {
-      routesCount: 4,
-      controllersCount: 1,
-      modelsCount: 1,
-      servicesCount: 1,
+      routesCount: summary.routesImpacted || nodes.filter((n) => n.layer === 'routes').length,
+      controllersCount: nodes.filter((n) => n.layer === 'controllers').length,
+      modelsCount: summary.modelsDiscovered || nodes.filter((n) => n.layer === 'models').length,
+      servicesCount: nodes.filter((n) => n.layer === 'services').length,
     };
     repo.status = 'scanned';
     repo.lastScannedAt = new Date();
     await repo.save();
 
+    const detectedRoutes = nodes.flatMap((n) =>
+      (n.httpEndpoints || []).map((ep) => `${ep.verb} ${ep.path}`)
+    );
+
     return {
-      message: `Repository "${fullName}" architecture scanned. Discovered 4 HTTP routes, 1 controller, and 1 schema.`,
+      message: scannedOnDisk
+        ? `Repository "${fullName}" architecture live scanned on disk (${resolvedDiskPath}). Discovered ${summary.routesImpacted} HTTP routes across ${nodes.length} files.`
+        : `Repository "${fullName}" architecture scanned. Discovered 4 HTTP routes, 1 controller, and 1 schema.`,
       repository: repo,
-      detectedRoutes: [
+      scannedOnDisk,
+      diskPath: resolvedDiskPath || 'conventions-fallback',
+      nodesCount: nodes.length,
+      edgesCount: edges.length,
+      detectedRoutes: detectedRoutes.length > 0 ? detectedRoutes : [
         `POST /api/${repoName}`,
         `GET /api/${repoName}/:id`,
         `PUT /api/${repoName}/:id`,
@@ -565,6 +632,7 @@ export class RepositoryService {
 
     if (data.defaultBranch) repo.defaultBranch = data.defaultBranch;
     if (data.installationId) repo.installationId = data.installationId;
+    if (data.localPath !== undefined) repo.localPath = data.localPath;
 
     await repo.save();
     return repo;

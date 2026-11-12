@@ -18,6 +18,7 @@ const RepositorySchema = new Schema(
     },
     installationId: { type: String, required: true },
     defaultBranch: { type: String, default: 'main' },
+    localPath: { type: String, default: '' },
     status: {
       type: String,
       enum: ['connected', 'scanned', 'analyzing'],

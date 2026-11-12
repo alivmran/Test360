@@ -138,12 +138,25 @@ export const apiClient = {
     return data;
   },
 
-  async scanRepository(owner, repo) {
+  async scanRepository(owner, repo, localPath = null) {
     const res = await fetch(`${BASE_URL}/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/scan`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(localPath ? { localPath } : {}),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to scan repository');
+    return data;
+  },
+
+  async testWebhookDelivery(repoFullName, event = 'ping') {
+    const res = await fetch(`${BASE_URL}/ingestion/test-delivery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoFullName, event }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Webhook test delivery failed');
     return data;
   },
 

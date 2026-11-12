@@ -38,7 +38,8 @@ export class RepositoryController {
   static async scan(req, res) {
     try {
       const fullName = `${req.params.owner}/${req.params.repo}`;
-      const result = await RepositoryService.scanRepository(fullName);
+      const localPath = req.body?.localPath || req.query?.localPath;
+      const result = await RepositoryService.scanRepository(fullName, localPath);
       res.status(200).json(result);
     } catch (err) {
       res.status(400).json({ error: err.message });

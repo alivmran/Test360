@@ -64,13 +64,13 @@ export const AstCustomNode = ({ data, selected }) => {
       </div>
 
       <div className="mt-2.5 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
-        <span>{node.lineCount || 60} lines</span>
-        {node.httpEndpoints && (
+        <span>{node.lines || node.lineCount || 60} lines</span>
+        {node.httpEndpoints && node.httpEndpoints.length > 0 && (
           <span className="text-zinc-300 font-medium">
             {node.httpEndpoints.length} {node.httpEndpoints.length === 1 ? 'Endpoint' : 'Endpoints'}
           </span>
         )}
-        {node.mongooseSchema && (
+        {(node.mongooseSchema || (node.mongooseFields && node.mongooseFields.length > 0)) && (
           <span className="text-semantic-emerald font-medium">Database Model</span>
         )}
       </div>

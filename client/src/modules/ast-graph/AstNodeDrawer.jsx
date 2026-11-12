@@ -20,7 +20,7 @@ export const AstNodeDrawer = ({ selectedNode }) => {
           <div className="flex items-center space-x-2 text-[11px] text-zinc-400 mb-1">
             <span>{getLayerLabel(selectedNode.layer)}</span>
             <span>•</span>
-            <span>{selectedNode.lineCount || 60} lines</span>
+            <span>{selectedNode.lines || selectedNode.lineCount || 60} lines</span>
           </div>
           <h3 className="font-mono text-sm font-bold text-zinc-100 break-all">
             {selectedNode.filePath}
@@ -94,7 +94,7 @@ export const AstNodeDrawer = ({ selectedNode }) => {
         </div>
 
         {/* Database Schema Fields */}
-        {selectedNode.mongooseSchema && (
+        {(selectedNode.mongooseSchema || (selectedNode.mongooseFields && selectedNode.mongooseFields.length > 0)) && (
           <div>
             <div className="flex items-center justify-between text-zinc-400 mb-2">
               <span className="font-semibold text-zinc-200 text-xs flex items-center space-x-1.5">
@@ -102,15 +102,15 @@ export const AstNodeDrawer = ({ selectedNode }) => {
                 <span>Database Fields</span>
               </span>
               <span className="text-[11px] text-semantic-emerald font-medium">
-                Collection: {selectedNode.mongooseSchema.collection}
+                Collection: {selectedNode.mongooseSchema?.collection || selectedNode.label?.replace(/\.[^/.]+$/, '')?.toLowerCase()}
               </span>
             </div>
             <div className="bg-zinc-950 border border-zinc-800 rounded-lg divide-y divide-zinc-800 text-[11px] font-mono">
-              {selectedNode.mongooseSchema.fields?.map((f, idx) => (
+              {(selectedNode.mongooseSchema?.fields || selectedNode.mongooseFields || []).map((f, idx) => (
                 <div key={idx} className="p-2 flex items-center justify-between">
                   <span className="text-zinc-200">{f.name}</span>
                   <div className="flex items-center space-x-1.5 text-[10px]">
-                    <span className="text-zinc-500">{f.type}</span>
+                    <span className="text-zinc-500">{f.type || 'String'}</span>
                     {f.required && (
                       <span className="text-semantic-rose text-[9px] font-sans border border-semantic-rose/30 px-1 rounded">
                         required
